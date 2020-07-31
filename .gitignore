@@ -1,0 +1,19 @@
+# CMake generated files
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Testing/
+
+# Generated files
+extra/txt2c
+*.lua.c
+*.so
+
+# Vim Swap files
+.*.sw[a-z]
+
+# Default test working directory
+test/var/
