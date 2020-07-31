@@ -1,3 +1,5 @@
+find_program(ECHO echo)
+
 # A helper function to compile *.lua source into *.lua.c sources
 function(lua_source varname filename)
     if (IS_ABSOLUTE "${filename}")
