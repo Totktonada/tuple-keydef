@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 #include <lua.h>
+#include <lauxlib.h>
 
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
 
