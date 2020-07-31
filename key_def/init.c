@@ -1,3 +1,5 @@
+#include <string.h>
+#include <lua.h>
 #include <lauxlib.h>
 #include <tarantool/module.h>
 
