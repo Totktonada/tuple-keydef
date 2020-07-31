@@ -1,3 +1,4 @@
+#include <lauxlib.h>
 #include <tarantool/module.h>
 
 extern char key_def_lua[];
