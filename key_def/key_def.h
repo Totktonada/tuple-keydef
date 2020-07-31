@@ -1,7 +1,7 @@
-#ifndef TARANTOOL_BOX_LUA_KEY_DEF_H_INCLUDED
-#define TARANTOOL_BOX_LUA_KEY_DEF_H_INCLUDED
+#ifndef KEY_DEF_KEY_DEF_H_INCLUDED
+#define KEY_DEF_KEY_DEF_H_INCLUDED
 /*
- * Copyright 2010-2019, Tarantool AUTHORS, please see AUTHORS file.
+ * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following
@@ -66,4 +66,4 @@ luaopen_key_def(struct lua_State *L);
 } /* extern "C" */
 #endif /* defined(__cplusplus) */
 
-#endif /* TARANTOOL_BOX_LUA_KEY_DEF_H_INCLUDED */
+#endif /* KEY_DEF_KEY_DEF_H_INCLUDED */

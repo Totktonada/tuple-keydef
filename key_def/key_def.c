@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2019, Tarantool AUTHORS, please see AUTHORS file.
+ * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following
@@ -37,6 +37,9 @@
 #include "lua/utils.h"
 #include "misc.h"
 #include "tuple.h"
+
+#include <stdint.h>
+#include <lua.h>
 
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
 
@@ -502,6 +505,6 @@ luaopen_key_def(struct lua_State *L)
 		{"totable", lbox_key_def_to_table},
 		{NULL, NULL}
 	};
-	luaL_register_module(L, "key_def", meta);
+	luaL_register(L, "key_def", meta);
 	return 1;
 }
