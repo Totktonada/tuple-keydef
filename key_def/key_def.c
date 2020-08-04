@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include <tarantool/module.h>
 
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
 
@@ -78,13 +79,14 @@ luaT_push_key_def(struct lua_State *L, const struct key_def *key_def)
 
 /**
  * Set key_part_def from a table on top of a Lua stack.
- * The region argument is used to allocate a JSON path when
- * required.
+ *
+ * A temporary storage for a JSON path is allocated on the fiber
+ * region when it is necessary.
+ *
  * When successful return 0, otherwise return -1 and set a diag.
  */
 static int
-luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part,
-		      struct region *region)
+luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part)
 {
 	*part = key_part_def_default;
 
@@ -207,9 +209,10 @@ luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part,
 			diag_set(IllegalParams, "multikey path is unsupported");
 			return -1;
 		}
-		char *tmp = region_alloc(region, path_len + 1);
+		char *tmp = fiber_region_alloc(path_len + 1);
 		if (tmp == NULL) {
-			diag_set(OutOfMemory, path_len + 1, "region", "path");
+			diag_set(OutOfMemory, path_len + 1, "fiber_region",
+				 "path");
 			return -1;
 		}
 		/*
@@ -285,8 +288,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 	if ((tuple = luaT_key_def_check_tuple(L, key_def, 2)) == NULL)
 		return luaT_error(L);
 
-	struct region *region = &fiber()->gc;
-	size_t region_svp = region_used(region);
+	size_t region_svp = fiber_region_used();
 	uint32_t key_size;
 	char *key = tuple_extract_key(tuple, key_def, MULTIKEY_NONE, &key_size);
 	tuple_unref(tuple);
@@ -295,7 +297,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 
 	struct tuple *ret =
 		tuple_new(tuple_format_runtime, key, key + key_size);
-	region_truncate(region, region_svp);
+	fiber_region_truncate(region_svp);
 	if (ret == NULL)
 		return luaT_error(L);
 	luaT_pushtuple(L, ret);
@@ -357,21 +359,20 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (tuple == NULL)
 		return luaT_error(L);
 
-	struct region *region = &fiber()->gc;
-	size_t region_svp = region_used(region);
+	size_t region_svp = fiber_region_used();
 	size_t key_len;
 	const char *key_end, *key = lbox_encode_tuple_on_gc(L, 3, &key_len);
 	uint32_t part_count = mp_decode_array(&key);
 	if (key_validate_parts(key_def, key, part_count, true,
 			       &key_end) != 0) {
-		region_truncate(region, region_svp);
+		fiber_region_truncate(region_svp);
 		tuple_unref(tuple);
 		return luaT_error(L);
 	}
 
 	int rc = tuple_compare_with_key(tuple, HINT_NONE, key,
 					part_count, HINT_NONE, key_def);
-	region_truncate(region, region_svp);
+	fiber_region_truncate(region_svp);
 	tuple_unref(tuple);
 	lua_pushinteger(L, rc);
 	return 1;
@@ -443,13 +444,13 @@ lbox_key_def_new(struct lua_State *L)
 
 	uint32_t part_count = lua_objlen(L, 1);
 
-	struct region *region = &fiber()->gc;
-	size_t region_svp = region_used(region);
+	size_t region_svp = fiber_region_used();
 	size_t size;
 	struct key_part_def *parts =
-		region_alloc_array(region, typeof(parts[0]), part_count, &size);
+		fiber_region_alloc_array(typeof(parts[0]), part_count, &size);
 	if (parts == NULL) {
-		diag_set(OutOfMemory, size, "region_alloc_array", "parts");
+		diag_set(OutOfMemory, size, "fiber_region_alloc_array",
+			 "parts");
 		return luaT_error(L);
 	}
 	if (part_count == 0) {
@@ -461,15 +462,15 @@ lbox_key_def_new(struct lua_State *L)
 	for (uint32_t i = 0; i < part_count; ++i) {
 		lua_pushinteger(L, i + 1);
 		lua_gettable(L, 1);
-		if (luaT_key_def_set_part(L, &parts[i], region) != 0) {
-			region_truncate(region, region_svp);
+		if (luaT_key_def_set_part(L, &parts[i]) != 0) {
+			fiber_region_truncate(region_svp);
 			return luaT_error(L);
 		}
 		lua_pop(L, 1);
 	}
 
 	struct key_def *key_def = key_def_new(parts, part_count, false);
-	region_truncate(region, region_svp);
+	fiber_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
 
