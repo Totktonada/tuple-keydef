@@ -12,6 +12,12 @@ set(module_sources
 
 add_library(${PROJECT_NAME} SHARED ${module_sources})
 
+# Without this magic .so is not rebuilt on .lua changes.
+#
+# XXX: Verify it again.
+add_custom_target(build_lua_sources DEPENDS ${lua_sources})
+add_dependencies(${PROJECT_NAME} build_lua_sources)
+
 # Drop 'lib' prefix from the filename: libfoo.so -> foo.so.
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 
