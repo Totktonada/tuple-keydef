@@ -3,6 +3,12 @@
 #include <lauxlib.h>
 #include <tarantool/module.h>
 
+/*
+ * FIXME: Get rid of __attribute__((constructor)) function (and
+ * this file as well): load Lua code directly from the module
+ * initialization code.
+ */
+
 extern char key_def_lua[];
 
 /**
