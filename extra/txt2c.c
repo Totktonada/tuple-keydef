@@ -2,7 +2,7 @@
  * txt2c: Converts text files to C strings
  *
  * Compile with:
- *	gcc txt2cs.c -o txt2cs
+ *	gcc txt2c.c -o txt2c
  *
  * Public domain.
  */
@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 
 int main(int argc, char** argv) {
 	const char *prefix = "";

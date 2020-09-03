@@ -447,7 +447,8 @@ lbox_key_def_new(struct lua_State *L)
 	size_t region_svp = fiber_region_used();
 	size_t size;
 	struct key_part_def *parts =
-		fiber_region_alloc_array(typeof(parts[0]), part_count, &size);
+		fiber_region_alloc_array(__typeof__(parts[0]), part_count,
+					 &size);
 	if (parts == NULL) {
 		diag_set(OutOfMemory, size, "fiber_region_alloc_array",
 			 "parts");

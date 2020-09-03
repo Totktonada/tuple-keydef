@@ -5,3 +5,6 @@ else()
     set(CMAKE_HOST_C_COMPILER ${CMAKE_C_COMPILER})
     set(CMAKE_HOST_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Werror")
