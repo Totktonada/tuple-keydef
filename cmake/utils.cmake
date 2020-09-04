@@ -19,8 +19,11 @@ function(lua_source varname filename)
         file(MAKE_DIRECTORY ${dstdir})
     endif()
 
+    # NB: We prepend the array name with the project name to avoid
+    # possible name collisions (say, with the same named built-in
+    # tarantool module).
     ADD_CUSTOM_COMMAND(OUTPUT ${dstfile}
-        COMMAND ${ECHO} 'const char ${module}_lua[] =' > ${tmpfile}
+        COMMAND ${ECHO} 'const char ${PROJECT_NAME}_${module}_lua[] =' > ${tmpfile}
         COMMAND ${CMAKE_BINARY_DIR}/extra/txt2c ${srcfile} >> ${tmpfile}
         COMMAND ${ECHO} '\;' >> ${tmpfile}
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmpfile} ${dstfile}

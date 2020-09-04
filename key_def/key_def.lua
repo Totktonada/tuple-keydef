@@ -1,6 +1,6 @@
 local ffi = require('ffi')
 local key_def = require('key_def')
-local key_def_t = ffi.typeof('struct key_def')
+local key_def_t = ffi.typeof('struct key_def_key_def')
 
 local methods = {
     ['extract_key'] = key_def.extract_key,
@@ -15,5 +15,5 @@ ffi.metatype(key_def_t, {
     __index = function(self, key)
         return methods[key]
     end,
-    __tostring = function(self) return "<struct key_def &>" end,
+    __tostring = function(self) return '<struct key_def_key_def *>' end,
 })

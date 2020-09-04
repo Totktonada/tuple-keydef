@@ -495,8 +495,16 @@ lbox_key_def_new(struct lua_State *L)
 LUA_API int
 luaopen_key_def(struct lua_State *L)
 {
-	luaL_cdef(L, "struct key_def;");
-	CTID_STRUCT_KEY_DEF_REF = luaL_ctypeid(L, "struct key_def&");
+	/*
+	 * ffi.metatype() cannot be called twice on the same type.
+	 *
+	 * Tarantool has built-in key_def Lua module since
+	 * 2.2.0-255-g22db9c264, which already calls
+	 * ffi.metatype() on <struct key_def>. We should use
+	 * another name within the external module.
+	 */
+	luaL_cdef(L, "struct key_def_key_def;");
+	CTID_STRUCT_KEY_DEF_REF = luaL_ctypeid(L, "struct key_def_key_def *");
 
 	/* Export C functions to Lua. */
 	static const struct luaL_Reg meta[] = {

@@ -9,7 +9,11 @@
  * initialization code.
  */
 
-extern char key_def_lua[];
+/*
+ * Note: It is prefixed with the project name to don't clash with
+ * tarantool symbol.
+ */
+extern char key_def_key_def_lua[];
 
 /**
  * Execute key_def.lua when key_def.so is loaded.
@@ -21,7 +25,7 @@ setup(void)
 	int top = lua_gettop(L);
 
 	const char *modname = "key_def";
-	const char *modsrc = key_def_lua;
+	const char *modsrc = key_def_key_def_lua;
 	const char *modfile = lua_pushfstring(L,
 		"@key_def/builtin/%s.lua", modname);
 	if (luaL_loadbuffer(L, modsrc, strlen(modsrc), modfile)) {
