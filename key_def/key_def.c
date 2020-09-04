@@ -38,12 +38,78 @@
 #include "misc.h"
 #include "tuple.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <tarantool/module.h>
+#include "util.h"
+
+/*
+ * Verify that <box_key_part_def_t> has the same size when
+ * compiled within tarantool and within the module.
+ *
+ * It is important, because the module allocates an array of key
+ * parts and passes it to <box_key_def_new_ex>() tarantool
+ * function.
+ */
+static_assert(sizeof(box_key_part_def_t) == BOX_KEY_PART_DEF_T_SIZE,
+	      "sizeof(box_key_part_def_t)");
+
+enum { TUPLE_INDEX_BASE = 1 };
 
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
+
+/* {{{ Helpers */
+
+const char *field_type_blacklist[] = {
+	"any",
+	"array",
+	"map",
+	"*",     /* alias for 'any' */
+};
+
+/**
+ * Whether a field type is supported by the module.
+ *
+ * It uses a black list to report an unsupported field type:
+ * an unknown field type will be reported as supported.
+ *
+ * FIXME: Such blacklisting on the module side should be taken
+ * as a temporary solution. Future implementation should lean on
+ * tarantool provided information regarding supported key_def
+ * actions: whether particular key_def / key_def_part can be used
+ * to compare a tuple with a tuple / a key, to extract a key from
+ * a tuple.
+ */
+static bool
+field_type_is_supported(const char *field_type, size_t len)
+{
+	int max = lengthof(field_type_blacklist);
+	int rc = strnindex(field_type_blacklist, field_type, len, max);
+	return rc == max;
+}
+
+/**
+ * Whether a JSON path is 'multikey path'.
+ *
+ * The function may be used on an invalid JSON path and may
+ * report such path either as 'multikey path' or the opposite.
+ *
+ * FIXME: Future implementation should support 'multikey path'
+ * key_defs, so it would not be worthful to expose relevant
+ * functions from tarantool (and take care of backward
+ * compatibility). Tarantool side limitations around such key_defs
+ * should be reflected in the module API: whether it is possible
+ * to do <...> using particular key_def.
+ */
+static bool
+json_path_is_multikey(const char *path)
+{
+	return strstr(path, "[*]") != NULL;
+}
+
+/* }}} Helpers */
 
 void
 luaT_push_key_def(struct lua_State *L, const struct key_def *key_def)
@@ -86,13 +152,14 @@ luaT_push_key_def(struct lua_State *L, const struct key_def *key_def)
  * When successful return 0, otherwise return -1 and set a diag.
  */
 static int
-luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part)
+luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 {
-	*part = key_part_def_default;
+	box_key_part_def_create(part);
+
+	/* FIXME: Verify Lua type of each field. */
 
 	/* Set part->fieldno. */
-	lua_pushstring(L, "fieldno");
-	lua_gettable(L, -2);
+	lua_getfield(L, -1, "fieldno");
 	if (lua_isnil(L, -1)) {
 		lua_pop(L, 1);
 		/*
@@ -102,116 +169,88 @@ luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part)
 		 */
 		lua_getfield(L, -1, "field");
 		if (lua_isnil(L, -1)) {
-			diag_set(IllegalParams,
-				 "fieldno or field must not be nil");
+			box_diag_set(IllegalParams,
+				     "fieldno or field must not be nil");
 			return -1;
 		}
 	} else {
 		lua_getfield(L, -2, "field");
 		if (! lua_isnil(L, -1)) {
-			diag_set(IllegalParams,
-				 "Conflicting options: fieldno and field");
+			box_diag_set(IllegalParams,
+				     "Conflicting options: fieldno and field");
 			return -1;
 		}
 		lua_pop(L, 1);
 	}
 	/*
 	 * Transform one-based Lua fieldno to zero-based
-	 * fieldno to use in key_def_new().
+	 * fieldno to use in box_key_def_new_ex().
 	 */
 	part->fieldno = lua_tointeger(L, -1) - TUPLE_INDEX_BASE;
 	lua_pop(L, 1);
 
 	/* Set part->type. */
-	lua_pushstring(L, "type");
-	lua_gettable(L, -2);
+	lua_getfield(L, -1, "type");
 	if (lua_isnil(L, -1)) {
-		diag_set(IllegalParams, "type must not be nil");
+		box_diag_set(IllegalParams, "type must not be nil");
 		return -1;
 	}
-	size_t type_len;
-	const char *type_name = lua_tolstring(L, -1, &type_len);
-	lua_pop(L, 1);
-	part->type = field_type_by_name(type_name, type_len);
-	switch (part->type) {
-	case FIELD_TYPE_ANY:
-	case FIELD_TYPE_VARBINARY:
-	case FIELD_TYPE_ARRAY:
-	case FIELD_TYPE_MAP:
-		/* Tuple comparators don't support these types. */
-		diag_set(IllegalParams, "Unsupported field type: %s",
-			 type_name);
-		return -1;
-	case field_type_MAX:
-		diag_set(IllegalParams, "Unknown field type: %s", type_name);
-		return -1;
-	default:
-		/* Pass though. */
-		break;
-	}
-
-	/* Set part->is_nullable and part->nullable_action. */
-	lua_pushstring(L, "is_nullable");
-	lua_gettable(L, -2);
-	if (!lua_isnil(L, -1) && lua_toboolean(L, -1) != 0) {
-		part->is_nullable = true;
-		part->nullable_action = ON_CONFLICT_ACTION_NONE;
-	}
+	size_t field_type_len;
+	part->field_type = lua_tolstring(L, -1, &field_type_len);
 	lua_pop(L, 1);
 
 	/*
-	 * Set part->coll_id using collation_id.
+	 * Verify field type.
 	 *
-	 * The value will be checked in key_def_new().
+	 * There are no comparators for 'any', 'array', 'map'
+	 * fields in tarantool, so creation of such key_def have
+	 * no practical application.
+	 *
+	 * FIXME: In future implementation we should obtain
+	 * information about comparators and key extractors
+	 * availability using the module API. See also
+	 * <field_type_is_supported>().
 	 */
-	lua_pushstring(L, "collation_id");
-	lua_gettable(L, -2);
-	if (!lua_isnil(L, -1))
-		part->coll_id = lua_tointeger(L, -1);
+	if (! field_type_is_supported(part->field_type, field_type_len)) {
+		box_diag_set(IllegalParams, "Unsupported field type: %s",
+			     part->field_type);
+		return -1;
+	}
+
+	/* Set part->is_nullable. */
+	lua_getfield(L, -1, "is_nullable");
+	if (! lua_isnil(L, -1) && lua_toboolean(L, -1) != 0)
+		part->flags |= BOX_KEY_PART_DEF_IS_NULLABLE_MASK;
 	lua_pop(L, 1);
 
-	/* Set part->coll_id using collation. */
-	lua_pushstring(L, "collation");
-	lua_gettable(L, -2);
-	if (!lua_isnil(L, -1)) {
-		/* Check for conflicting options. */
-		if (part->coll_id != COLL_NONE) {
-			diag_set(IllegalParams, "Conflicting options: "
-				 "collation_id and collation");
-			return -1;
-		}
+	/* FIXME: Bring back collation_id support. */
 
-		size_t coll_name_len;
-		const char *coll_name = lua_tolstring(L, -1, &coll_name_len);
-		struct coll_id *coll_id = coll_by_name(coll_name,
-						       coll_name_len);
-		if (coll_id == NULL) {
-			diag_set(IllegalParams, "Unknown collation: \"%s\"",
-				 coll_name);
-			return -1;
-		}
-		part->coll_id = coll_id->id;
-	}
+	/* Set part->coll_name using string collation. */
+	lua_getfield(L, -1, "collation");
+	if (! lua_isnil(L, -1))
+		part->coll_name = lua_tostring(L, -1);
 	lua_pop(L, 1);
 
 	/* Set part->path (JSON path). */
-	lua_pushstring(L, "path");
-	lua_gettable(L, -2);
-	if (!lua_isnil(L, -1)) {
+	lua_getfield(L, -1, "path");
+	if (! lua_isnil(L, -1)) {
 		size_t path_len;
 		const char *path = lua_tolstring(L, -1, &path_len);
-		if (json_path_validate(path, path_len, TUPLE_INDEX_BASE) != 0) {
-			diag_set(IllegalParams, "invalid path");
+
+		/*
+		 * JSON path will be validated in
+		 * box_key_def_new_ex().
+		 */
+
+		if (json_path_is_multikey(path)) {
+			box_diag_set(IllegalParams,
+				     "Multikey JSON path is not supported");
 			return -1;
 		}
-		if ((size_t)json_path_multikey_offset(path, path_len,
-					      TUPLE_INDEX_BASE) != path_len) {
-			diag_set(IllegalParams, "multikey path is unsupported");
-			return -1;
-		}
+
 		char *tmp = fiber_region_alloc(path_len + 1);
 		if (tmp == NULL) {
-			diag_set(OutOfMemory, path_len + 1, "fiber_region",
+			box_diag_set(OutOfMemory, path_len + 1, "fiber_region",
 				 "path");
 			return -1;
 		}
@@ -221,10 +260,9 @@ luaT_key_def_set_part(struct lua_State *L, struct key_part_def *part)
 		 */
 		memcpy(tmp, path, path_len + 1);
 		part->path = tmp;
-	} else {
-		part->path = NULL;
 	}
 	lua_pop(L, 1);
+
 	return 0;
 }
 
@@ -249,7 +287,7 @@ luaT_key_def_check_tuple(struct lua_State *L, struct key_def *key_def, int idx)
 struct key_def *
 luaT_check_key_def(struct lua_State *L, int idx)
 {
-	if (lua_type(L, idx) != LUA_TCDATA)
+	if (! luaL_iscdata(L, idx))
 		return NULL;
 
 	uint32_t cdata_type;
@@ -267,7 +305,7 @@ lbox_key_def_gc(struct lua_State *L)
 {
 	struct key_def *key_def = luaT_check_key_def(L, 1);
 	assert(key_def != NULL);
-	key_def_delete(key_def);
+	box_key_def_delete(key_def);
 	return 0;
 }
 
@@ -439,30 +477,29 @@ lbox_key_def_new(struct lua_State *L)
 				  "{fieldno = fieldno, type = type"
 				  "[, is_nullable = <boolean>]"
 				  "[, path = <string>]"
-				  "[, collation_id = <number>]"
 				  "[, collation = <string>]}, ...}");
 
 	uint32_t part_count = lua_objlen(L, 1);
 
+	struct region *region = fiber_region();
 	size_t region_svp = fiber_region_used();
 	size_t size;
-	struct key_part_def *parts =
+	box_key_part_def_t *parts =
 		fiber_region_alloc_array(__typeof__(parts[0]), part_count,
 					 &size);
 	if (parts == NULL) {
-		diag_set(OutOfMemory, size, "fiber_region_alloc_array",
-			 "parts");
+		box_diag_set(OutOfMemory, size, "fiber_region_alloc_array",
+			     "parts");
 		return luaT_error(L);
 	}
 	if (part_count == 0) {
-		diag_set(IllegalParams, "Key definition can only be constructed"
-					" by using at least 1 key_part");
+		box_diag_set(IllegalParams,
+			     "At least one key part is required");
 		return luaT_error(L);
 	}
 
 	for (uint32_t i = 0; i < part_count; ++i) {
-		lua_pushinteger(L, i + 1);
-		lua_gettable(L, 1);
+		lua_rawgeti(L, 1, i + 1);
 		if (luaT_key_def_set_part(L, &parts[i]) != 0) {
 			fiber_region_truncate(region_svp);
 			return luaT_error(L);
@@ -470,22 +507,13 @@ lbox_key_def_new(struct lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	struct key_def *key_def = key_def_new(parts, part_count, false);
+	struct key_def *key_def = box_key_def_new_ex(parts, part_count, region);
 	fiber_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
 
-	/*
-	 * Compare and extract key_def methods must work even with
-	 * tuples with omitted (optional) fields. As there is no
-	 * space format which would guarantee certain minimal
-	 * field_count, pass min_field_count = 0 to ensure that
-	 * functions will work correctly in such case.
-	 */
-	key_def_update_optionality(key_def, 0);
-
-	*(struct key_def **) luaL_pushcdata(L,
-				CTID_STRUCT_KEY_DEF_REF) = key_def;
+	*(struct key_def **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
+		key_def;
 	lua_pushcfunction(L, lbox_key_def_gc);
 	luaL_setcdatagc(L, -2);
 

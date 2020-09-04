@@ -6,6 +6,7 @@ set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${lua_sources})
 
 set(module_sources
     init.c
+    util.c
     key_def.c
     ${lua_sources}
 )
