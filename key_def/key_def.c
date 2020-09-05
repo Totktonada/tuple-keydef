@@ -111,36 +111,50 @@ json_path_is_multikey(const char *path)
 
 /* }}} Helpers */
 
-void
-luaT_push_key_def(struct lua_State *L, const struct key_def *key_def)
+static void
+luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 {
-	lua_createtable(L, key_def->part_count, 0);
-	for (uint32_t i = 0; i < key_def->part_count; ++i) {
-		const struct key_part *part = &key_def->parts[i];
-		lua_newtable(L);
+	struct region *region = fiber_region();
+	size_t region_svp = fiber_region_used();
+	uint32_t part_count = 0;
+	box_key_part_def_t *parts = box_key_def_dump_parts(key_def, &part_count,
+							   region);
+	if (parts == NULL)
+		luaT_error(L);
 
-		lua_pushstring(L, field_type_strs[part->type]);
-		lua_setfield(L, -2, "type");
+	lua_createtable(L, part_count, 0);
+	for (uint32_t i = 0; i < part_count; ++i) {
+		box_key_part_def_t *part = &parts[i];
+		lua_newtable(L);
 
 		lua_pushnumber(L, part->fieldno + TUPLE_INDEX_BASE);
 		lua_setfield(L, -2, "fieldno");
 
+		lua_pushstring(L, part->field_type);
+		lua_setfield(L, -2, "type");
+
+		bool is_nullable = (part->flags &
+			BOX_KEY_PART_DEF_IS_NULLABLE_MASK) ==
+			BOX_KEY_PART_DEF_IS_NULLABLE_MASK;
+		if (is_nullable) {
+			lua_pushboolean(L, is_nullable);
+			lua_setfield(L, -2, "is_nullable");
+		}
+
+		if (part->collation != NULL) {
+			lua_pushstring(L, part->collation);
+			lua_setfield(L, -2, "collation");
+		}
+
 		if (part->path != NULL) {
-			lua_pushlstring(L, part->path, part->path_len);
+			lua_pushstring(L, part->path);
 			lua_setfield(L, -2, "path");
 		}
 
-		lua_pushboolean(L, key_part_is_nullable(part));
-		lua_setfield(L, -2, "is_nullable");
-
-		if (part->coll_id != COLL_NONE) {
-			struct coll_id *coll_id = coll_by_id(part->coll_id);
-			assert(coll_id != NULL);
-			lua_pushstring(L, coll_id->name);
-			lua_setfield(L, -2, "collation");
-		}
 		lua_rawseti(L, -2, i + 1);
 	}
+
+	fiber_region_truncate(region_svp);
 }
 
 /**
@@ -456,7 +470,7 @@ lbox_key_def_to_table(struct lua_State *L)
 	if (lua_gettop(L) != 1 || (key_def = luaT_check_key_def(L, 1)) == NULL)
 		return luaL_error(L, "Usage: key_def:totable()");
 
-	luaT_push_key_def(L, key_def);
+	luaT_key_def_to_table(L, key_def);
 	return 1;
 }
 
