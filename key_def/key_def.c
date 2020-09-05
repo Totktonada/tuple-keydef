@@ -29,15 +29,6 @@
  * SUCH DAMAGE.
  */
 
-#include "box/coll_id_cache.h"
-#include "box/lua/key_def.h"
-#include "box/tuple.h"
-#include "diag.h"
-#include "fiber.h"
-#include "lua/utils.h"
-#include "misc.h"
-#include "tuple.h"
-
 #include <assert.h>
 #include <stdint.h>
 #include <lua.h>
