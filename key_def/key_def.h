@@ -36,30 +36,18 @@ extern "C" {
 #endif /* defined(__cplusplus) */
 
 struct lua_State;
-struct key_def;
+typedef struct key_def box_key_def_t;
 
 /**
- * Push a new table representing a key_def to a Lua stack.
- * Table is consists of key_def::parts tables that describe
- * each part correspondingly.
- * The collation and path fields are optional so resulting
- * object doesn't declare them where not necessary.
+ * Extract a key_def from the Lua stack.
  */
-void
-luaT_push_key_def(struct lua_State *L, const struct key_def *key_def);
-
-/**
- * Check key_def pointer in LUA stack by specified index.
- * The value by idx is expected to be key_def's cdata.
- * Returns not NULL tuple pointer on success, NULL otherwise.
- */
-struct key_def *
-luaT_check_key_def(struct lua_State *L, int idx);
+box_key_def_t *
+key_def_luaT_check_key_def(struct lua_State *L, int idx);
 
 /**
  * Register the module.
  */
-int
+LUA_API int
 luaopen_key_def(struct lua_State *L);
 
 #if defined(__cplusplus)

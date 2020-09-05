@@ -281,8 +281,8 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 }
 
 /**
- * Check an existent tuple pointer  in LUA stack by specified
- * index or attemt to construct it by LUA table.
+ * Check an existent tuple pointer in Lua stack by specified
+ * index or attemt to construct it by Lua table.
  * Increase tuple's reference counter.
  * Returns not NULL tuple pointer on success, NULL otherwise.
  */
@@ -298,14 +298,14 @@ luaT_key_def_check_tuple(struct lua_State *L, struct key_def *key_def, int idx)
 	return tuple;
 }
 
-struct key_def *
+static box_key_def_t *
 luaT_check_key_def(struct lua_State *L, int idx)
 {
 	if (! luaL_iscdata(L, idx))
 		return NULL;
 
 	uint32_t cdata_type;
-	struct key_def **key_def_ptr = luaL_checkcdata(L, idx, &cdata_type);
+	box_key_def_t **key_def_ptr = luaL_checkcdata(L, idx, &cdata_type);
 	if (key_def_ptr == NULL || cdata_type != CTID_STRUCT_KEY_DEF_REF)
 		return NULL;
 	return *key_def_ptr;
@@ -326,7 +326,7 @@ lbox_key_def_gc(struct lua_State *L)
 /**
  * Extract key from tuple by given key definition and return
  * tuple representing this key.
- * Push the new key tuple as cdata to a LUA stack on success.
+ * Push the new key tuple as cdata to a Lua stack on success.
  * Raise error otherwise.
  */
 static int
@@ -361,7 +361,7 @@ lbox_key_def_extract_key(struct lua_State *L)
  * Push 0  if key_fields(tuple_a) == key_fields(tuple_b)
  *      <0 if key_fields(tuple_a) < key_fields(tuple_b)
  *      >0 if key_fields(tuple_a) > key_fields(tuple_b)
- * integer to a LUA stack on success.
+ * integer to a Lua stack on success.
  * Raise error otherwise.
  */
 static int
@@ -394,7 +394,7 @@ lbox_key_def_compare(struct lua_State *L)
  * Push 0  if key_fields(tuple) == parts(key)
  *      <0 if key_fields(tuple) < parts(key)
  *      >0 if key_fields(tuple) > parts(key)
- * integer to a LUA stack on success.
+ * integer to a Lua stack on success.
  * Raise error otherwise.
  */
 static int
@@ -431,12 +431,12 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 }
 
 /**
- * Construct and export to LUA a new key definition with a set
+ * Construct and export to Lua a new key definition with a set
  * union of key parts from first and second key defs. Parts of
  * the new key_def consist of the first key_def's parts and those
  * parts of the second key_def that were not among the first
  * parts.
- * Push the new key_def as cdata to a LUA stack on success.
+ * Push the new key_def as cdata to a Lua stack on success.
  * Raise error otherwise.
  */
 static int
@@ -458,7 +458,6 @@ lbox_key_def_merge(struct lua_State *L)
 	luaL_setcdatagc(L, -2);
 	return 1;
 }
-
 
 /**
  * Push a new table representing a key_def to a Lua stack.
@@ -534,6 +533,14 @@ lbox_key_def_new(struct lua_State *L)
 	return 1;
 }
 
+/* {{{ Public API of the module */
+
+box_key_def_t *
+key_def_luaT_check_key_def(struct lua_State *L, int idx)
+{
+	return luaT_check_key_def(L, idx);
+}
+
 LUA_API int
 luaopen_key_def(struct lua_State *L)
 {
@@ -561,3 +568,5 @@ luaopen_key_def(struct lua_State *L)
 	luaL_register(L, "key_def", meta);
 	return 1;
 }
+
+/* }}} Public API of the module */
