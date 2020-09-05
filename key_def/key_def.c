@@ -225,10 +225,10 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 
 	/* FIXME: Bring back collation_id support. */
 
-	/* Set part->coll_name using string collation. */
+	/* Set part->collation. */
 	lua_getfield(L, -1, "collation");
 	if (! lua_isnil(L, -1))
-		part->coll_name = lua_tostring(L, -1);
+		part->collation = lua_tostring(L, -1);
 	lua_pop(L, 1);
 
 	/* Set part->path (JSON path). */
