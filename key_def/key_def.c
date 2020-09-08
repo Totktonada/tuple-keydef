@@ -273,7 +273,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 
 /**
  * Check an existent tuple pointer in Lua stack by specified
- * index or attemt to construct it by Lua table.
+ * index or attempt to construct it by Lua table.
  * Increase tuple's reference counter.
  * Returns not NULL tuple pointer on success, NULL otherwise.
  */
