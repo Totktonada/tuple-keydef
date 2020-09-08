@@ -253,6 +253,10 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 			return -1;
 		}
 
+		/*
+		 * FIXME: Revisit this part and think whether we
+		 * actually need to copy JSON paths.
+		 */
 		char *tmp = fiber_region_alloc(path_len + 1);
 		if (tmp == NULL) {
 			box_diag_set(OutOfMemory, path_len + 1, "fiber_region",
