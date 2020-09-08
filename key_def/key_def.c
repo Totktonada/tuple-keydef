@@ -343,7 +343,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 		return luaT_error(L);
 
 	struct tuple *ret =
-		tuple_new(tuple_format_runtime, key, key + key_size);
+		box_tuple_new(box_tuple_format_default(), key, key + key_size);
 	fiber_region_truncate(region_svp);
 	if (ret == NULL)
 		return luaT_error(L);
