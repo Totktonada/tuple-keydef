@@ -453,7 +453,7 @@ lbox_key_def_merge(struct lua_State *L)
 	    (key_def_b = luaT_check_key_def(L, 2)) == NULL)
 		return luaL_error(L, "Usage: key_def:merge(second_key_def)");
 
-	struct key_def *new_key_def = key_def_merge(key_def_a, key_def_b);
+	struct key_def *new_key_def = box_key_def_merge(key_def_a, key_def_b);
 	if (new_key_def == NULL)
 		return luaT_error(L);
 
