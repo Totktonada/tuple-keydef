@@ -377,7 +377,7 @@ lbox_key_def_compare(struct lua_State *L)
 		return luaT_error(L);
 	}
 
-	int rc = tuple_compare(tuple_a, HINT_NONE, tuple_b, HINT_NONE, key_def);
+	int rc = box_tuple_compare(tuple_a, tuple_b, key_def);
 	box_tuple_unref(tuple_a);
 	box_tuple_unref(tuple_b);
 	lua_pushinteger(L, rc);
@@ -406,19 +406,29 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (tuple == NULL)
 		return luaT_error(L);
 
+	struct region *region = fiber_region();
 	size_t region_svp = fiber_region_used();
-	size_t key_len;
-	const char *key_end, *key = lbox_encode_tuple_on_gc(L, 3, &key_len);
-	uint32_t part_count = mp_decode_array(&key);
-	if (key_validate_parts(key_def, key, part_count, true,
+	size_t key_len = 0;
+	const char *key = luaT_tuple_encode(L, 3, &key_len, region);
+	/* FIXME: Bring back validation. */
+#if 0
+	const char *key_items = key;
+	const char *key_end;
+	uint32_t part_count = mp_decode_array(&key_items);
+	if (key_validate_parts(key_def, key_items, part_count, true,
 			       &key_end) != 0) {
 		fiber_region_truncate(region_svp);
 		box_tuple_unref(tuple);
 		return luaT_error(L);
 	}
+	if (key_end != key + key_len) {
+		box_diag_set(IllegalParams,
+			     "Invalid MsgPack: unexpected key length");
+		return luaT_error(L);
+	}
+#endif
 
-	int rc = tuple_compare_with_key(tuple, HINT_NONE, key,
-					part_count, HINT_NONE, key_def);
+	int rc = box_tuple_compare_with_key(tuple, key, key_def);
 	fiber_region_truncate(region_svp);
 	box_tuple_unref(tuple);
 	lua_pushinteger(L, rc);
