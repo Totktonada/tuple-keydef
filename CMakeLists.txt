@@ -19,3 +19,6 @@ include_directories(${TARANTOOL_INCLUDE_DIRS})
 
 add_subdirectory(extra)
 add_subdirectory(key_def)
+
+enable_testing()
+add_subdirectory(test)
