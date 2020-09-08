@@ -285,7 +285,7 @@ luaT_key_def_check_tuple(struct lua_State *L, struct key_def *key_def, int idx)
 		tuple = luaT_tuple_new(L, idx, box_tuple_format_default());
 	if (tuple == NULL || box_tuple_validate_key_parts(key_def, tuple) != 0)
 		return NULL;
-	tuple_ref(tuple);
+	box_tuple_ref(tuple);
 	return tuple;
 }
 
@@ -334,7 +334,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 	size_t region_svp = fiber_region_used();
 	uint32_t key_size;
 	char *key = tuple_extract_key(tuple, key_def, MULTIKEY_NONE, &key_size);
-	tuple_unref(tuple);
+	box_tuple_unref(tuple);
 	if (key == NULL)
 		return luaT_error(L);
 
@@ -369,13 +369,13 @@ lbox_key_def_compare(struct lua_State *L)
 	if ((tuple_a = luaT_key_def_check_tuple(L, key_def, 2)) == NULL)
 		return luaT_error(L);
 	if ((tuple_b = luaT_key_def_check_tuple(L, key_def, 3)) == NULL) {
-		tuple_unref(tuple_a);
+		box_tuple_unref(tuple_a);
 		return luaT_error(L);
 	}
 
 	int rc = tuple_compare(tuple_a, HINT_NONE, tuple_b, HINT_NONE, key_def);
-	tuple_unref(tuple_a);
-	tuple_unref(tuple_b);
+	box_tuple_unref(tuple_a);
+	box_tuple_unref(tuple_b);
 	lua_pushinteger(L, rc);
 	return 1;
 }
@@ -409,14 +409,14 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (key_validate_parts(key_def, key, part_count, true,
 			       &key_end) != 0) {
 		fiber_region_truncate(region_svp);
-		tuple_unref(tuple);
+		box_tuple_unref(tuple);
 		return luaT_error(L);
 	}
 
 	int rc = tuple_compare_with_key(tuple, HINT_NONE, key,
 					part_count, HINT_NONE, key_def);
 	fiber_region_truncate(region_svp);
-	tuple_unref(tuple);
+	box_tuple_unref(tuple);
 	lua_pushinteger(L, rc);
 	return 1;
 }
