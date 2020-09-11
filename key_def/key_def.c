@@ -100,6 +100,21 @@ json_path_is_multikey(const char *path)
 	return strstr(path, "[*]") != NULL;
 }
 
+#define DIAG_SET_ER_ILLEGAL_PARAMS(...) do {			\
+	box_error_set(__FILE__, __LINE__, ER_ILLEGAL_PARAMS,	\
+		      ##__VA_ARGS__);				\
+} while (0)
+
+#define DIAG_SET_ER_MEMORY_ISSUE(...) do {				\
+	box_error_set(__FILE__, __LINE__, ER_MEMORY_ISSUE,		\
+		      "Failed to allocate %u bytes in %s for %s",	\
+		      ##__VA_ARGS__);					\
+} while (0)
+
+#define diag_set(box_error_code, ...) do {	\
+	DIAG_SET_##box_error_code(__VA_ARGS__);	\
+} while(0)
+
 /* }}} Helpers */
 
 static void
@@ -173,15 +188,15 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 		 */
 		lua_getfield(L, -1, "field");
 		if (lua_isnil(L, -1)) {
-			box_diag_set(IllegalParams,
-				     "fieldno or field must not be nil");
+			diag_set(ER_ILLEGAL_PARAMS,
+				 "fieldno or field must not be nil");
 			return -1;
 		}
 	} else {
 		lua_getfield(L, -2, "field");
 		if (! lua_isnil(L, -1)) {
-			box_diag_set(IllegalParams,
-				     "Conflicting options: fieldno and field");
+			diag_set(ER_ILLEGAL_PARAMS,
+				 "Conflicting options: fieldno and field");
 			return -1;
 		}
 		lua_pop(L, 1);
@@ -196,7 +211,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 	/* Set part->type. */
 	lua_getfield(L, -1, "type");
 	if (lua_isnil(L, -1)) {
-		box_diag_set(IllegalParams, "type must not be nil");
+		diag_set(ER_ILLEGAL_PARAMS, "type must not be nil");
 		return -1;
 	}
 	size_t field_type_len;
@@ -216,8 +231,8 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 	 * <field_type_is_supported>().
 	 */
 	if (! field_type_is_supported(part->field_type, field_type_len)) {
-		box_diag_set(IllegalParams, "Unsupported field type: %s",
-			     part->field_type);
+		diag_set(ER_ILLEGAL_PARAMS, "Unsupported field type: %s",
+			 part->field_type);
 		return -1;
 	}
 
@@ -247,8 +262,8 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 		 */
 
 		if (json_path_is_multikey(path)) {
-			box_diag_set(IllegalParams,
-				     "Multikey JSON path is not supported");
+			diag_set(ER_ILLEGAL_PARAMS,
+				 "Multikey JSON path is not supported");
 			return -1;
 		}
 
@@ -258,7 +273,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 		 */
 		char *tmp = box_region_alloc(path_len + 1);
 		if (tmp == NULL) {
-			box_diag_set(OutOfMemory, path_len + 1, "box_region",
+			diag_set(ER_MEMORY_ISSUE, path_len + 1, "box_region",
 				 "path");
 			return -1;
 		}
@@ -421,8 +436,8 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 		return luaT_error(L);
 	}
 	if (key_end != key + key_len) {
-		box_diag_set(IllegalParams,
-			     "Invalid MsgPack: unexpected key length");
+		diag_set(ER_ILLEGAL_PARAMS,
+			 "Invalid MsgPack: unexpected key length");
 		return luaT_error(L);
 	}
 #endif
@@ -502,13 +517,13 @@ lbox_key_def_new(struct lua_State *L)
 	box_key_part_def_t *parts =
 		box_region_alloc_array(__typeof__(parts[0]), part_count, &size);
 	if (parts == NULL) {
-		box_diag_set(OutOfMemory, size, "box_region_alloc_array",
-			     "parts");
+		diag_set(ER_MEMORY_ISSUE, size, "box_region_alloc_array",
+			 "parts");
 		return luaT_error(L);
 	}
 	if (part_count == 0) {
-		box_diag_set(IllegalParams,
-			     "At least one key part is required");
+		diag_set(ER_ILLEGAL_PARAMS,
+			 "At least one key part is required");
 		return luaT_error(L);
 	}
 
