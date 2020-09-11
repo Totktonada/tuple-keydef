@@ -407,10 +407,9 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (tuple == NULL)
 		return luaT_error(L);
 
-	struct region *region = fiber_region();
-	size_t region_svp = fiber_region_used();
 	size_t key_len = 0;
-	const char *key = luaT_tuple_encode(L, 3, &key_len, region);
+	/* No need to free: allocated on the Lua shared ibuf. */
+	const char *key = luaT_tuple_encode(L, 3, &key_len);
 	/* FIXME: Bring back validation. */
 #if 0
 	const char *key_items = key;
@@ -430,7 +429,6 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 #endif
 
 	int rc = box_tuple_compare_with_key(tuple, key, key_def);
-	fiber_region_truncate(region_svp);
 	box_tuple_unref(tuple);
 	lua_pushinteger(L, rc);
 	return 1;
