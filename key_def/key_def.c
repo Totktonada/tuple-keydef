@@ -105,11 +105,10 @@ json_path_is_multikey(const char *path)
 static void
 luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 {
-	struct region *region = fiber_region();
 	size_t region_svp = fiber_region_used();
 	uint32_t part_count = 0;
-	box_key_part_def_t *parts = box_key_def_dump_parts(key_def, &part_count,
-							   region);
+	box_key_part_def_t *parts = box_key_def_dump_parts(key_def,
+							   &part_count);
 	if (parts == NULL)
 		luaT_error(L);
 
@@ -498,7 +497,6 @@ lbox_key_def_new(struct lua_State *L)
 
 	uint32_t part_count = lua_objlen(L, 1);
 
-	struct region *region = fiber_region();
 	size_t region_svp = fiber_region_used();
 	size_t size;
 	box_key_part_def_t *parts =
@@ -524,7 +522,7 @@ lbox_key_def_new(struct lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	struct key_def *key_def = box_key_def_new_ex(parts, part_count, region);
+	struct key_def *key_def = box_key_def_new_ex(parts, part_count);
 	fiber_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
