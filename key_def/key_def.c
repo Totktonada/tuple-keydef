@@ -105,7 +105,7 @@ json_path_is_multikey(const char *path)
 static void
 luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 {
-	size_t region_svp = fiber_region_used();
+	size_t region_svp = box_region_used();
 	uint32_t part_count = 0;
 	box_key_part_def_t *parts = box_key_def_dump_parts(key_def,
 							   &part_count);
@@ -144,13 +144,13 @@ luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 		lua_rawseti(L, -2, i + 1);
 	}
 
-	fiber_region_truncate(region_svp);
+	box_region_truncate(region_svp);
 }
 
 /**
  * Set key_part_def from a table on top of a Lua stack.
  *
- * A temporary storage for a JSON path is allocated on the fiber
+ * A temporary storage for a JSON path is allocated on the box
  * region when it is necessary.
  *
  * When successful return 0, otherwise return -1 and set a diag.
@@ -256,9 +256,9 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 		 * FIXME: Revisit this part and think whether we
 		 * actually need to copy JSON paths.
 		 */
-		char *tmp = fiber_region_alloc(path_len + 1);
+		char *tmp = box_region_alloc(path_len + 1);
 		if (tmp == NULL) {
-			box_diag_set(OutOfMemory, path_len + 1, "fiber_region",
+			box_diag_set(OutOfMemory, path_len + 1, "box_region",
 				 "path");
 			return -1;
 		}
@@ -334,7 +334,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 	if ((tuple = luaT_key_def_check_tuple(L, key_def, 2)) == NULL)
 		return luaT_error(L);
 
-	size_t region_svp = fiber_region_used();
+	size_t region_svp = box_region_used();
 	uint32_t key_size;
 	char *key = box_tuple_extract_key_ex(tuple, key_def, MULTIKEY_NONE,
 					     &key_size);
@@ -344,7 +344,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 
 	struct tuple *ret =
 		box_tuple_new(box_tuple_format_default(), key, key + key_size);
-	fiber_region_truncate(region_svp);
+	box_region_truncate(region_svp);
 	if (ret == NULL)
 		return luaT_error(L);
 	luaT_pushtuple(L, ret);
@@ -416,7 +416,7 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	uint32_t part_count = mp_decode_array(&key_items);
 	if (key_validate_parts(key_def, key_items, part_count, true,
 			       &key_end) != 0) {
-		fiber_region_truncate(region_svp);
+		box_region_truncate(region_svp);
 		box_tuple_unref(tuple);
 		return luaT_error(L);
 	}
@@ -497,13 +497,12 @@ lbox_key_def_new(struct lua_State *L)
 
 	uint32_t part_count = lua_objlen(L, 1);
 
-	size_t region_svp = fiber_region_used();
+	size_t region_svp = box_region_used();
 	size_t size;
 	box_key_part_def_t *parts =
-		fiber_region_alloc_array(__typeof__(parts[0]), part_count,
-					 &size);
+		box_region_alloc_array(__typeof__(parts[0]), part_count, &size);
 	if (parts == NULL) {
-		box_diag_set(OutOfMemory, size, "fiber_region_alloc_array",
+		box_diag_set(OutOfMemory, size, "box_region_alloc_array",
 			     "parts");
 		return luaT_error(L);
 	}
@@ -516,14 +515,14 @@ lbox_key_def_new(struct lua_State *L)
 	for (uint32_t i = 0; i < part_count; ++i) {
 		lua_rawgeti(L, 1, i + 1);
 		if (luaT_key_def_set_part(L, &parts[i]) != 0) {
-			fiber_region_truncate(region_svp);
+			box_region_truncate(region_svp);
 			return luaT_error(L);
 		}
 		lua_pop(L, 1);
 	}
 
 	struct key_def *key_def = box_key_def_new_ex(parts, part_count);
-	fiber_region_truncate(region_svp);
+	box_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
 
