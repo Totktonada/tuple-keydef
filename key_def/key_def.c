@@ -421,26 +421,13 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (tuple == NULL)
 		return luaT_error(L);
 
-	size_t key_len = 0;
 	/* No need to free: allocated on the Lua shared ibuf. */
-	const char *key = luaT_tuple_encode(L, 3, &key_len);
-	/* FIXME: Bring back validation. */
-#if 0
-	const char *key_items = key;
-	const char *key_end;
-	uint32_t part_count = mp_decode_array(&key_items);
-	if (key_validate_parts(key_def, key_items, part_count, true,
-			       &key_end) != 0) {
-		box_region_truncate(region_svp);
+	const char *key = luaT_tuple_encode(L, 3, NULL);
+
+	if (box_key_def_validate_key(key_def, key, true) != 0) {
 		box_tuple_unref(tuple);
 		return luaT_error(L);
 	}
-	if (key_end != key + key_len) {
-		diag_set(ER_ILLEGAL_PARAMS,
-			 "Invalid MsgPack: unexpected key length");
-		return luaT_error(L);
-	}
-#endif
 
 	int rc = box_tuple_compare_with_key(tuple, key, key_def);
 	box_tuple_unref(tuple);
