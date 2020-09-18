@@ -50,6 +50,7 @@ static_assert(sizeof(box_key_part_def_t) == BOX_KEY_PART_DEF_T_SIZE,
 enum { TUPLE_INDEX_BASE = 1 };
 
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
+static bool JSON_PATH_IS_SUPPORTED = false;
 
 /* {{{ Helpers */
 
@@ -98,6 +99,37 @@ static bool
 json_path_is_multikey(const char *path)
 {
 	return strstr(path, "[*]") != NULL;
+}
+
+/**
+ * Runtime check whether JSON path is supported.
+ */
+static bool
+json_path_is_supported(void)
+{
+	bool res = false;
+
+	/* Create a key_def with JSON path. */
+	box_key_part_def_t part;
+	box_key_part_def_create(&part);
+	part.fieldno = 0;
+	part.field_type = "unsigned";
+	part.path = "[1]";
+	box_key_def_t *key_def = box_key_def_new_ex(&part, 1);
+
+	/* Dump parts and look whether JSON path is dumped. */
+	size_t region_svp = box_region_used();
+	uint32_t part_count = 0;
+	box_key_part_def_t *parts = box_key_def_dump_parts(key_def,
+							   &part_count);
+	assert(parts != NULL);
+	res = parts[0].path != NULL;
+	box_region_truncate(region_svp);
+
+	/* Delete the key_def. */
+	box_key_def_delete(key_def);
+
+	return res;
 }
 
 #define DIAG_SET_ER_ILLEGAL_PARAMS(...) do {			\
@@ -253,6 +285,11 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 	/* Set part->path (JSON path). */
 	lua_getfield(L, -1, "path");
 	if (! lua_isnil(L, -1)) {
+		if (! JSON_PATH_IS_SUPPORTED) {
+			diag_set(ER_ILLEGAL_PARAMS, "JSON path is not "
+				 "supported on given tarantool version");
+			return -1;
+		}
 		size_t path_len;
 		const char *path = lua_tolstring(L, -1, &path_len);
 
@@ -557,6 +594,8 @@ luaopen_key_def(struct lua_State *L)
 	 */
 	luaL_cdef(L, "struct key_def_key_def;");
 	CTID_STRUCT_KEY_DEF_REF = luaL_ctypeid(L, "struct key_def_key_def *");
+
+	JSON_PATH_IS_SUPPORTED = json_path_is_supported();
 
 	/* Export C functions to Lua. */
 	static const struct luaL_Reg meta[] = {

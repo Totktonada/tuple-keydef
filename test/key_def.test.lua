@@ -8,6 +8,45 @@ local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
     :gsub('/%./', '/'):gsub('/+$', ''))
 package.cpath = string.format('%s/../key_def/?.so;%s', cur_dir, package.cpath)
 
+-- {{{ Compatibility layer between different tarantool versions
+
+local function parse_tarantool_version(component)
+    local pattern = '^(%d+).(%d+).(%d+)-(%d+)-g[0-9a-f]+$'
+    return tonumber((select(component, _TARANTOOL:match(pattern))))
+end
+
+local _TARANTOOL_MAJOR = parse_tarantool_version(1)
+local _TARANTOOL_MINOR = parse_tarantool_version(2)
+local _TARANTOOL_PATCH = parse_tarantool_version(3)
+local _TARANTOOL_REV = parse_tarantool_version(4)
+
+local function tarantool_version_at_least(major, minor, patch, rev)
+    local major = major or 0
+    local minor = minor or 0
+    local patch = patch or 0
+    local rev = rev or 0
+
+    if _TARANTOOL_MAJOR < major then return false end
+    if _TARANTOOL_MAJOR > major then return true end
+
+    if _TARANTOOL_MINOR < minor then return false end
+    if _TARANTOOL_MINOR > minor then return true end
+
+    if _TARANTOOL_PATCH < patch then return false end
+    if _TARANTOOL_PATCH > patch then return true end
+
+    if _TARANTOOL_REV < rev then return false end
+    if _TARANTOOL_REV > rev then return true end
+
+    return true
+end
+
+-- FIXME: Check against exact version where JSON path support
+-- appears.
+local json_path_is_supported = tarantool_version_at_least(2)
+
+-- }}} Compatibility layer between different tarantool versions
+
 local tap = require('tap')
 local ffi = require('ffi')
 local json = require('json')
@@ -147,6 +186,7 @@ local key_def_new_cases = {
             path = '[3[',
         }},
         exp_err = 'Invalid JSON path: "[3["',
+        require_json_path = true,
     },
     {
         'Multikey JSON path',
@@ -156,6 +196,7 @@ local key_def_new_cases = {
             path = '[*]',
         }},
         exp_err = 'Multikey JSON path is not supported',
+        require_json_path = true,
     },
     {
         'Success case; one part',
@@ -173,6 +214,7 @@ local key_def_new_cases = {
             path = '[3]',
         }},
         exp_err = nil,
+        require_json_path = true,
     },
     --
     -- gh-4519: key_def should allow the same options as
@@ -201,10 +243,12 @@ local key_def_new_cases = {
 
 local test = tap.test('key_def')
 
-test:plan(#key_def_new_cases - 1 + 7)
+test:plan(#key_def_new_cases - 1 + 8)
 for _, case in ipairs(key_def_new_cases) do
     if type(case) == 'function' then
         case()
+    elseif case.require_json_path and not json_path_is_supported then
+        test:skip(case[1])
     else
         local ok, res
         if case.params then
@@ -247,15 +291,20 @@ test:test('extract_key()', function(test)
     test:is_deeply(key_def_b:extract_key(tuple_a):totable(), {1, 22}, 'case 2')
 
     -- JSON path.
-    local res = key_def_lib.new({
-        {type = 'string', fieldno = 1, path = 'a.b'},
-    }):extract_key(box.tuple.new({{a = {b = 'foo'}}})):totable()
-    test:is_deeply(res, {'foo'}, 'JSON path (tuple argument)')
+    if json_path_is_supported then
+        local res = key_def_lib.new({
+            {type = 'string', fieldno = 1, path = 'a.b'},
+        }):extract_key(box.tuple.new({{a = {b = 'foo'}}})):totable()
+        test:is_deeply(res, {'foo'}, 'JSON path (tuple argument)')
 
-    local res = key_def_lib.new({
-        {type = 'string', fieldno = 1, path = 'a.b'},
-    }):extract_key({{a = {b = 'foo'}}}):totable()
-    test:is_deeply(res, {'foo'}, 'JSON path (table argument)')
+        local res = key_def_lib.new({
+            {type = 'string', fieldno = 1, path = 'a.b'},
+        }):extract_key({{a = {b = 'foo'}}}):totable()
+        test:is_deeply(res, {'foo'}, 'JSON path (table argument)')
+    else
+        test:skip('JSON path (tuple argument)')
+        test:skip('JSON path (table argument)')
+    end
 
     -- A key def has a **nullable** part with a field that is over
     -- a tuple size.
@@ -274,7 +323,12 @@ test:test('extract_key()', function(test)
     --
     -- * is_nullable = false;
     -- * has_optional_parts = false.
-    local exp_err = 'Tuple field [2] required by space format is missing'
+    local exp_err
+    if tarantool_version_at_least(2) then
+        exp_err = 'Tuple field [2] required by space format is missing'
+    else
+        exp_err = 'Field 2 was not found in the tuple'
+    end
     local key_def = key_def_lib.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
@@ -285,7 +339,12 @@ test:test('extract_key()', function(test)
         'short tuple with a non-nullable part (case 1)')
 
     -- Same as before, but a max fieldno is over tuple:len() + 1.
-    local exp_err = 'Tuple field [2] required by space format is missing'
+    local exp_err
+    if tarantool_version_at_least(2) then
+        exp_err = 'Tuple field [2] required by space format is missing'
+    else
+        exp_err = 'Field 2 was not found in the tuple'
+    end
     local key_def = key_def_lib.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
@@ -300,7 +359,12 @@ test:test('extract_key()', function(test)
     --
     -- * is_nullable = true;
     -- * has_optional_parts = false.
-    local exp_err = 'Tuple field [2] required by space format is missing'
+    local exp_err
+    if tarantool_version_at_least(2) then
+        exp_err = 'Tuple field [2] required by space format is missing'
+    else
+        exp_err = 'Field 2 was not found in the tuple'
+    end
     local key_def = key_def_lib.new({
         {type = 'string', fieldno = 1, is_nullable = true},
         {type = 'string', fieldno = 2},
@@ -312,8 +376,13 @@ test:test('extract_key()', function(test)
 
     -- A tuple has a field that does not match corresponding key
     -- part type.
-    local exp_err = 'Supplied key type of part 2 does not match index ' ..
-                    'part type: expected string'
+    if tarantool_version_at_least(2) then
+        exp_err = 'Supplied key type of part 2 does not match index ' ..
+                  'part type: expected string'
+    else
+        exp_err = 'Tuple field 2 type does not match one required by ' ..
+                  'operation: expected string'
+    end
     local key_def = key_def_lib.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
@@ -323,26 +392,33 @@ test:test('extract_key()', function(test)
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
         'wrong field type')
 
-    local key_def = key_def_lib.new({
-        {type = 'number', fieldno = 1, path='a'},
-        {type = 'number', fieldno = 1, path='b'},
-        {type = 'number', fieldno = 1, path='c', is_nullable=true},
-        {type = 'number', fieldno = 3, is_nullable=true},
-    })
-    local ok, err = pcall(key_def.extract_key, key_def,
-                          box.tuple.new({1, 1, 22}))
-    test:is_deeply({ok, tostring(err)},
-                {false, 'Tuple field [1]a required by space format is missing'},
-                'invalid JSON structure')
-    test:is_deeply(key_def:extract_key({{a=1, b=2}, 1}):totable(),
-                   {1, 2, box.NULL, box.NULL},
-                   'tuple with optional parts - case 1')
-    test:is_deeply(key_def:extract_key({{a=1, b=2, c=3}, 1}):totable(),
-                   {1, 2, 3, box.NULL},
-                   'tuple with optional parts - case 2')
-    test:is_deeply(key_def:extract_key({{a=1, b=2}, 1, 3}):totable(),
-                   {1, 2, box.NULL, 3},
-                   'tuple with optional parts - case 3')
+    if json_path_is_supported then
+        local key_def = key_def_lib.new({
+            {type = 'number', fieldno = 1, path='a'},
+            {type = 'number', fieldno = 1, path='b'},
+            {type = 'number', fieldno = 1, path='c', is_nullable=true},
+            {type = 'number', fieldno = 3, is_nullable=true},
+        })
+        local ok, err = pcall(key_def.extract_key, key_def,
+                              box.tuple.new({1, 1, 22}))
+        local exp_err = 'Tuple field [1]a required by space format is missing'
+        test:is_deeply({ok, tostring(err)}, {false, exp_err},
+                       'invalid JSON structure')
+        test:is_deeply(key_def:extract_key({{a=1, b=2}, 1}):totable(),
+                       {1, 2, box.NULL, box.NULL},
+                       'tuple with optional parts - case 1')
+        test:is_deeply(key_def:extract_key({{a=1, b=2, c=3}, 1}):totable(),
+                       {1, 2, 3, box.NULL},
+                       'tuple with optional parts - case 2')
+        test:is_deeply(key_def:extract_key({{a=1, b=2}, 1, 3}):totable(),
+                       {1, 2, box.NULL, 3},
+                       'tuple with optional parts - case 3')
+    else
+        test:skip('invalid JSON structure')
+        test:skip('tuple with optional parts - case 1')
+        test:skip('tuple with optional parts - case 2')
+        test:skip('tuple with optional parts - case 3')
+    end
 end)
 
 -- Case: compare().
@@ -501,6 +577,27 @@ test:test('merge()', function(test)
         'case 3: verify with :totable()')
     test:is_deeply(key_def_cb:extract_key(tuple_a):totable(),
         {1, 1, box.NULL, 22}, 'case 3: verify with :extract_key()')
+end)
+
+test:test('JSON path is not supported error', function(test)
+    test:plan(1)
+
+    if json_path_is_supported then
+        test:skip('verify error message')
+        return
+    end
+
+    local parts = {
+        {
+            fieldno = 1,
+            type = 'string',
+            path = '[3]',
+        },
+    }
+    local exp_err = 'JSON path is not supported on given tarantool version'
+    local ok, err = pcall(key_def_lib.new, parts)
+    test:is_deeply({ok, tostring(err)}, {false, exp_err},
+                   'verify error message')
 end)
 
 os.exit(test:check() and 0 or 1)
