@@ -296,7 +296,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
  * Returns not NULL tuple pointer on success, NULL otherwise.
  */
 static struct tuple *
-luaT_key_def_check_tuple(struct lua_State *L, struct key_def *key_def, int idx)
+luaT_key_def_check_tuple(struct lua_State *L, box_key_def_t *key_def, int idx)
 {
 	struct tuple *tuple = luaT_istuple(L, idx);
 	if (tuple == NULL)
@@ -326,7 +326,7 @@ luaT_check_key_def(struct lua_State *L, int idx)
 static int
 lbox_key_def_gc(struct lua_State *L)
 {
-	struct key_def *key_def = luaT_check_key_def(L, 1);
+	box_key_def_t *key_def = luaT_check_key_def(L, 1);
 	assert(key_def != NULL);
 	box_key_def_delete(key_def);
 	return 0;
@@ -341,7 +341,7 @@ lbox_key_def_gc(struct lua_State *L)
 static int
 lbox_key_def_extract_key(struct lua_State *L)
 {
-	struct key_def *key_def;
+	box_key_def_t *key_def;
 	if (lua_gettop(L) != 2 || (key_def = luaT_check_key_def(L, 1)) == NULL)
 		return luaL_error(L, "Usage: key_def:extract_key(tuple)");
 
@@ -377,7 +377,7 @@ lbox_key_def_extract_key(struct lua_State *L)
 static int
 lbox_key_def_compare(struct lua_State *L)
 {
-	struct key_def *key_def;
+	box_key_def_t *key_def;
 	if (lua_gettop(L) != 3 ||
 	    (key_def = luaT_check_key_def(L, 1)) == NULL) {
 		return luaL_error(L, "Usage: key_def:"
@@ -410,7 +410,7 @@ lbox_key_def_compare(struct lua_State *L)
 static int
 lbox_key_def_compare_with_key(struct lua_State *L)
 {
-	struct key_def *key_def;
+	box_key_def_t *key_def;
 	if (lua_gettop(L) != 3 ||
 	    (key_def = luaT_check_key_def(L, 1)) == NULL) {
 		return luaL_error(L, "Usage: key_def:"
@@ -447,18 +447,18 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 static int
 lbox_key_def_merge(struct lua_State *L)
 {
-	struct key_def *key_def_a, *key_def_b;
+	box_key_def_t *key_def_a, *key_def_b;
 	if (lua_gettop(L) != 2 ||
 	    (key_def_a = luaT_check_key_def(L, 1)) == NULL ||
 	    (key_def_b = luaT_check_key_def(L, 2)) == NULL)
 		return luaL_error(L, "Usage: key_def:merge(second_key_def)");
 
-	struct key_def *new_key_def = box_key_def_merge(key_def_a, key_def_b);
+	box_key_def_t *new_key_def = box_key_def_merge(key_def_a, key_def_b);
 	if (new_key_def == NULL)
 		return luaT_error(L);
 
-	*(struct key_def **) luaL_pushcdata(L,
-				CTID_STRUCT_KEY_DEF_REF) = new_key_def;
+	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
+		new_key_def;
 	lua_pushcfunction(L, lbox_key_def_gc);
 	luaL_setcdatagc(L, -2);
 	return 1;
@@ -470,7 +470,7 @@ lbox_key_def_merge(struct lua_State *L)
 static int
 lbox_key_def_to_table(struct lua_State *L)
 {
-	struct key_def *key_def;
+	box_key_def_t *key_def;
 	if (lua_gettop(L) != 1 || (key_def = luaT_check_key_def(L, 1)) == NULL)
 		return luaL_error(L, "Usage: key_def:totable()");
 
@@ -523,12 +523,12 @@ lbox_key_def_new(struct lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	struct key_def *key_def = box_key_def_new_ex(parts, part_count);
+	box_key_def_t *key_def = box_key_def_new_ex(parts, part_count);
 	box_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
 
-	*(struct key_def **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
+	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
 		key_def;
 	lua_pushcfunction(L, lbox_key_def_gc);
 	luaL_setcdatagc(L, -2);
