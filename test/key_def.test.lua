@@ -6,7 +6,8 @@ package.loaded.key_def = nil
 -- Prefer the module from the repository.
 local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
     :gsub('/%./', '/'):gsub('/+$', ''))
-package.cpath = string.format('%s/../key_def/?.so;%s', cur_dir, package.cpath)
+local soext = jit.os == 'OSX' and 'dylib' or 'so'
+package.cpath = ('%s/../key_def/?.%s;%s'):format(cur_dir, soext, package.cpath)
 
 -- {{{ Compatibility layer between different tarantool versions
 
