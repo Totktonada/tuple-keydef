@@ -52,7 +52,33 @@ enum { TUPLE_INDEX_BASE = 1 };
 static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
 static bool JSON_PATH_IS_SUPPORTED = false;
 
+/*
+ * Buffer for the part of the module written in Lua.
+ *
+ * Note: It is prefixed with the project name to don't clash with
+ * tarantool symbol.
+ */
+extern char key_def_key_def_lua[];
+
 /* {{{ Helpers */
+
+void
+execute_key_def_lua(struct lua_State *L)
+{
+	int top = lua_gettop(L);
+
+	const char *modname = "key_def";
+	const char *modsrc = key_def_key_def_lua;
+	const char *modfile = "@key_def/key_def.lua";
+
+	if (luaL_loadbuffer(L, modsrc, strlen(modsrc), modfile) != 0)
+		luaL_error(L, "Unable to load @key_def/key_def.lua");
+	lua_pushstring(L, modname);
+	lua_call(L, 1, 1);
+
+	/* Ignore Lua return value. */
+	lua_settop(L, top);
+}
 
 const char *field_type_blacklist[] = {
 	"any",
@@ -608,6 +634,10 @@ luaopen_key_def(struct lua_State *L)
 		{NULL, NULL}
 	};
 	luaL_register(L, "key_def", meta);
+
+	/* Execute Lua part of the module. */
+	execute_key_def_lua(L);
+
 	return 1;
 }
 
