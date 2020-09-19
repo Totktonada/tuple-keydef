@@ -80,6 +80,28 @@ execute_key_def_lua(struct lua_State *L)
 	lua_settop(L, top);
 }
 
+/**
+ * part->path accessors.
+ *
+ * <box_key_part_def_t> on 1.10 does not have 'path' field, but
+ * it is convenient to provide ability to build the module using
+ * tarantool-1.10 headers.
+ *
+ * This hack assumes that pointers are 64 bit.
+ */
+#define JSON_PATH_OFFSET(part_ptr) ((char *)(part_ptr) + 24)
+#define JSON_PATH(part_ptr) (*(const char **)JSON_PATH_OFFSET(part_ptr))
+#define JSON_PATH_SET(part_ptr, value) do {				\
+	const char **p = (const char **)JSON_PATH_OFFSET(part_ptr);	\
+	*p = (value);							\
+} while(0)
+
+/**
+ * MULTIKEY_NONE contant is not provided by tarantool-1.10
+ * headers, so we define our own.
+ */
+enum { KEY_DEF_MULTIKEY_NONE = -1 };
+
 const char *field_type_blacklist[] = {
 	"any",
 	"array",
@@ -140,7 +162,7 @@ json_path_is_supported(void)
 	box_key_part_def_create(&part);
 	part.fieldno = 0;
 	part.field_type = "unsigned";
-	part.path = "[1]";
+	JSON_PATH_SET(&part, "[1]");
 	box_key_def_t *key_def = box_key_def_new_ex(&part, 1);
 
 	/* Dump parts and look whether JSON path is dumped. */
@@ -149,7 +171,7 @@ json_path_is_supported(void)
 	box_key_part_def_t *parts = box_key_def_dump_parts(key_def,
 							   &part_count);
 	assert(parts != NULL);
-	res = parts[0].path != NULL;
+	res = JSON_PATH(&parts[0]) != NULL;
 	box_region_truncate(region_svp);
 
 	/* Delete the key_def. */
@@ -209,8 +231,8 @@ luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 			lua_setfield(L, -2, "collation");
 		}
 
-		if (part->path != NULL) {
-			lua_pushstring(L, part->path);
+		if (JSON_PATH(part) != NULL) {
+			lua_pushstring(L, JSON_PATH(part));
 			lua_setfield(L, -2, "path");
 		}
 
@@ -345,7 +367,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 		 * trailing '\0'.
 		 */
 		memcpy(tmp, path, path_len + 1);
-		part->path = tmp;
+		JSON_PATH_SET(part, tmp);
 	}
 	lua_pop(L, 1);
 
@@ -414,8 +436,8 @@ lbox_key_def_extract_key(struct lua_State *L)
 
 	size_t region_svp = box_region_used();
 	uint32_t key_size;
-	char *key = box_tuple_extract_key_ex(tuple, key_def, MULTIKEY_NONE,
-					     &key_size);
+	char *key = box_tuple_extract_key_ex(tuple, key_def,
+					     KEY_DEF_MULTIKEY_NONE, &key_size);
 	box_tuple_unref(tuple);
 	if (key == NULL)
 		return luaT_error(L);
