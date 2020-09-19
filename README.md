@@ -1,5 +1,10 @@
 # tuple.keydef
 
+# This branch
+
+This branch contains git history from early development stage of the module.
+Unlikely it'll be interested for someone, but kept here just in case.
+
 ## Overview
 
 The module provides ability to use Tarantool's tuple comparators and key
