@@ -89,11 +89,11 @@ execute_key_def_lua(struct lua_State *L)
  *
  * This hack assumes that pointers are 64 bit.
  */
-#define JSON_PATH_OFFSET(part_ptr) ((char *)(part_ptr) + 24)
-#define JSON_PATH(part_ptr) (*(const char **)JSON_PATH_OFFSET(part_ptr))
-#define JSON_PATH_SET(part_ptr, value) do {				\
-	const char **p = (const char **)JSON_PATH_OFFSET(part_ptr);	\
-	*p = (value);							\
+#define JSON_PATH_PTR(part_ptr) ((const char **)((char *)(part_ptr) + 24))
+#define JSON_PATH(part_ptr) (*JSON_PATH_PTR(part_ptr))
+#define JSON_PATH_SET(part_ptr, value) do {		\
+	const char **p = JSON_PATH_PTR(part_ptr);	\
+	*p = (value);					\
 } while(0)
 
 /**
