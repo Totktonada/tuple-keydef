@@ -623,12 +623,9 @@ lbox_key_def_new(struct lua_State *L)
 
 /* {{{ Public API of the module */
 
-box_key_def_t *
-key_def_luaT_check_key_def(struct lua_State *L, int idx)
-{
-	return luaT_check_key_def(L, idx);
-}
-
+/**
+ * Register the module.
+ */
 LUA_API int
 luaopen_key_def(struct lua_State *L)
 {
