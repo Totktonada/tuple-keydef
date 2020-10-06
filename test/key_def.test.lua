@@ -458,7 +458,7 @@ end)
 
 -- Case: compare_with_key().
 test:test('compare_with_key()', function(test)
-    test:plan(2)
+    test:plan(3)
 
     local key_def_b = key_def_lib.new({
         {type = 'number', fieldno = 2},
@@ -471,6 +471,12 @@ test:test('compare_with_key()', function(test)
 
     local key = box.tuple.new({1, 22})
     test:is(key_def_b:compare_with_key(tuple_a, key), 0, 'tuple')
+
+    -- Unserializable key.
+    local exp_err = "unsupported Lua type 'function'"
+    local key = {function() end}
+    local ok, err = pcall(key_def_b.compare_with_key, key_def_b, tuple_a, key)
+    test:is_deeply({ok, tostring(err)}, {false, exp_err}, 'unserializable key')
 end)
 
 -- Case: totable().

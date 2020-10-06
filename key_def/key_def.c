@@ -506,15 +506,22 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 	if (tuple == NULL)
 		return luaT_error(L);
 
-	/* No need to free: allocated on the Lua shared ibuf. */
+	size_t region_svp = box_region_used();
 	const char *key = luaT_tuple_encode(L, 3, NULL);
+	if (key == NULL) {
+		box_region_truncate(region_svp);
+		box_tuple_unref(tuple);
+		return luaT_error(L);
+	}
 
 	if (box_key_def_validate_key(key_def, key, true) != 0) {
+		box_region_truncate(region_svp);
 		box_tuple_unref(tuple);
 		return luaT_error(L);
 	}
 
 	int rc = box_tuple_compare_with_key(tuple, key, key_def);
+	box_region_truncate(region_svp);
 	box_tuple_unref(tuple);
 	lua_pushinteger(L, rc);
 	return 1;
