@@ -97,8 +97,8 @@ execute_key_def_lua(struct lua_State *L)
 } while(0)
 
 /**
- * MULTIKEY_NONE contant is not provided by tarantool-1.10
- * headers, so we define our own.
+ * Pass it to box_tuple_extract_key_ex(), when multikey index
+ * logic should not be involved.
  */
 enum { KEY_DEF_MULTIKEY_NONE = -1 };
 
