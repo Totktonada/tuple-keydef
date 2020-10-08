@@ -592,11 +592,11 @@ lbox_key_def_new(struct lua_State *L)
 	uint32_t part_count = lua_objlen(L, 1);
 
 	size_t region_svp = box_region_used();
-	size_t size;
-	box_key_part_def_t *parts =
-		box_region_alloc_array(__typeof__(parts[0]), part_count, &size);
+	size_t size = sizeof(box_key_part_def_t) * part_count;
+	box_key_part_def_t *parts = box_region_aligned_alloc(
+		size, alignof(box_key_part_def_t));
 	if (parts == NULL) {
-		diag_set(ER_MEMORY_ISSUE, size, "box_region_alloc_array",
+		diag_set(ER_MEMORY_ISSUE, size, "box_region_aligned_alloc",
 			 "parts");
 		return luaT_error(L);
 	}
