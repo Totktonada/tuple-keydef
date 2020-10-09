@@ -41,7 +41,7 @@
  * compiled within tarantool and within the module.
  *
  * It is important, because the module allocates an array of key
- * parts and passes it to <box_key_def_new_ex>() tarantool
+ * parts and passes it to <box_key_def_new_v2>() tarantool
  * function.
  */
 static_assert(sizeof(box_key_part_def_t) == BOX_KEY_PART_DEF_T_SIZE,
@@ -97,7 +97,7 @@ execute_key_def_lua(struct lua_State *L)
 } while(0)
 
 /**
- * Pass it to box_tuple_extract_key_ex(), when multikey index
+ * Pass it to box_tuple_extract_key_v2(), when multikey index
  * logic should not be involved.
  */
 enum { KEY_DEF_MULTIKEY_NONE = -1 };
@@ -163,7 +163,7 @@ json_path_is_supported(void)
 	part.fieldno = 0;
 	part.field_type = "unsigned";
 	JSON_PATH_SET(&part, "[1]");
-	box_key_def_t *key_def = box_key_def_new_ex(&part, 1);
+	box_key_def_t *key_def = box_key_def_new_v2(&part, 1);
 
 	/* Dump parts and look whether JSON path is dumped. */
 	size_t region_svp = box_region_used();
@@ -283,7 +283,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 	}
 	/*
 	 * Transform one-based Lua fieldno to zero-based
-	 * fieldno to use in box_key_def_new_ex().
+	 * fieldno to use in box_key_def_new_v2().
 	 */
 	part->fieldno = lua_tointeger(L, -1) - TUPLE_INDEX_BASE;
 	lua_pop(L, 1);
@@ -343,7 +343,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 
 		/*
 		 * JSON path will be validated in
-		 * box_key_def_new_ex().
+		 * box_key_def_new_v2().
 		 */
 
 		if (json_path_is_multikey(path)) {
@@ -615,7 +615,7 @@ lbox_key_def_new(struct lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	box_key_def_t *key_def = box_key_def_new_ex(parts, part_count);
+	box_key_def_t *key_def = box_key_def_new_v2(parts, part_count);
 	box_region_truncate(region_svp);
 	if (key_def == NULL)
 		return luaT_error(L);
