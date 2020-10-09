@@ -219,8 +219,8 @@ luaT_key_def_to_table(struct lua_State *L, const box_key_def_t *key_def)
 		lua_setfield(L, -2, "type");
 
 		bool is_nullable = (part->flags &
-			BOX_KEY_PART_DEF_IS_NULLABLE_MASK) ==
-			BOX_KEY_PART_DEF_IS_NULLABLE_MASK;
+			BOX_KEY_PART_DEF_IS_NULLABLE) ==
+			BOX_KEY_PART_DEF_IS_NULLABLE;
 		if (is_nullable) {
 			lua_pushboolean(L, is_nullable);
 			lua_setfield(L, -2, "is_nullable");
@@ -319,7 +319,7 @@ luaT_key_def_set_part(struct lua_State *L, box_key_part_def_t *part)
 	/* Set part->is_nullable. */
 	lua_getfield(L, -1, "is_nullable");
 	if (! lua_isnil(L, -1) && lua_toboolean(L, -1) != 0)
-		part->flags |= BOX_KEY_PART_DEF_IS_NULLABLE_MASK;
+		part->flags |= BOX_KEY_PART_DEF_IS_NULLABLE;
 	lua_pop(L, 1);
 
 	/* FIXME: Bring back collation_id support. */
