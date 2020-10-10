@@ -436,8 +436,8 @@ lbox_key_def_extract_key(struct lua_State *L)
 
 	size_t region_svp = box_region_used();
 	uint32_t key_size;
-	char *key = box_tuple_extract_key_ex(tuple, key_def,
-					     KEY_DEF_MULTIKEY_NONE, &key_size);
+	char *key = box_key_def_extract_key(key_def, tuple,
+					    KEY_DEF_MULTIKEY_NONE, &key_size);
 	box_tuple_unref(tuple);
 	if (key == NULL)
 		return luaT_error(L);
