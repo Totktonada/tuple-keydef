@@ -386,7 +386,7 @@ luaT_key_def_check_tuple(struct lua_State *L, box_key_def_t *key_def, int idx)
 	struct tuple *tuple = luaT_istuple(L, idx);
 	if (tuple == NULL)
 		tuple = luaT_tuple_new(L, idx, box_tuple_format_default());
-	if (tuple == NULL || box_tuple_validate_key_parts(key_def, tuple) != 0)
+	if (tuple == NULL || box_key_def_validate_tuple(key_def, tuple) != 0)
 		return NULL;
 	box_tuple_ref(tuple);
 	return tuple;
