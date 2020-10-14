@@ -58,7 +58,7 @@ static bool JSON_PATH_IS_SUPPORTED = false;
  * Note: It is prefixed with the project name to don't clash with
  * tarantool symbol.
  */
-extern char key_def_key_def_lua[];
+extern char tuple_keydef_key_def_lua[];
 
 /* {{{ Helpers */
 
@@ -68,7 +68,7 @@ execute_key_def_lua(struct lua_State *L)
 	int top = lua_gettop(L);
 
 	const char *modname = "key_def";
-	const char *modsrc = key_def_key_def_lua;
+	const char *modsrc = tuple_keydef_key_def_lua;
 	const char *modfile = "@key_def/key_def.lua";
 
 	if (luaL_loadbuffer(L, modsrc, strlen(modsrc), modfile) != 0)
@@ -634,7 +634,7 @@ lbox_key_def_new(struct lua_State *L)
  * Register the module.
  */
 LUA_API int
-luaopen_key_def(struct lua_State *L)
+luaopen_keydef(struct lua_State *L)
 {
 	/*
 	 * ffi.metatype() cannot be called twice on the same type.

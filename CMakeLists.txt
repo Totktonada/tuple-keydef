@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
-project(key_def C)
+project(tuple_keydef C)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -18,7 +18,7 @@ find_package(Tarantool)
 include_directories(${TARANTOOL_INCLUDE_DIRS})
 
 add_subdirectory(extra)
-add_subdirectory(key_def)
+add_subdirectory(keydef)
 
 enable_testing()
 add_subdirectory(test)

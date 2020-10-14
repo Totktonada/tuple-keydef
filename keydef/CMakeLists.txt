@@ -10,22 +10,24 @@ set(module_sources
     ${lua_sources}
 )
 
-add_library(${PROJECT_NAME} SHARED ${module_sources})
+set(LIBSUBDIR tuple)
+set(LIBNAME keydef)
+add_library(${LIBNAME} SHARED ${module_sources})
 
 # Without this magic .so is not rebuilt on .lua changes.
 #
 # XXX: Verify it again.
 add_custom_target(build_lua_sources DEPENDS ${lua_sources})
-add_dependencies(${PROJECT_NAME} build_lua_sources)
+add_dependencies(${LIBNAME} build_lua_sources)
 
 # Drop 'lib' prefix from the filename: libfoo.so -> foo.so.
-set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+set_target_properties(${LIBNAME} PROPERTIES PREFIX "")
 
 # The dynamic library will be loaded from tarantool executable
 # and will use symbols from it. So it is completely okay to have
 # unresolved symbols at build time.
 if (APPLE)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+    set_target_properties(${LIBNAME} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
 endif()
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR}/)
+install(TARGETS ${LIBNAME} LIBRARY DESTINATION ${TARANTOOL_INSTALL_LIBDIR}/${LIBSUBDIR})

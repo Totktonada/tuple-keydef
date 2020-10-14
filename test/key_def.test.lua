@@ -1,13 +1,10 @@
 #!/usr/bin/env tarantool
 
--- Unload built-in key_def module.
-package.loaded.key_def = nil
-
 -- Prefer the module from the repository.
 local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
     :gsub('/%./', '/'):gsub('/+$', ''))
 local soext = jit.os == 'OSX' and 'dylib' or 'so'
-package.cpath = ('%s/../key_def/?.%s;%s'):format(cur_dir, soext, package.cpath)
+package.cpath = ('%s/../keydef/?.%s;%s'):format(cur_dir, soext, package.cpath)
 
 -- {{{ Compatibility layer between different tarantool versions
 
@@ -60,7 +57,7 @@ local fun = require('fun')
 -- function GC object.
 jit.off(fun.chain({}).gen)
 
-local key_def_lib = require('key_def')
+local key_def_lib = require('keydef')
 
 local usage_error = 'Bad params, use: key_def.new({' ..
                     '{fieldno = fieldno, type = type' ..
