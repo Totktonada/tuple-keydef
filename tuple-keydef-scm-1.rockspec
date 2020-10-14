@@ -1,12 +1,12 @@
-package = 'key_def'
+package = 'tuple-keydef'
 version = 'scm-1'
 source  = {
-    url    = 'git://github.com/Totktonada/key_def.git',
+    url    = 'git://github.com/tarantool/tuple-keydef.git',
     branch = 'master',
 }
 description = {
-    summary  = 'key_def module for Tarantool',
-    homepage = 'https://github.com/Totktonada/key_def',
+    summary  = 'Compare tuples, extract keys and so on',
+    homepage = 'https://github.com/tarantool/tuple-keydef',
     maintainer = 'Alexander Turenko <alexander.turenko@tarantool.org>',
     license  = 'BSD2',
 }
