@@ -24,7 +24,7 @@ required as `tuple.keydef`.
 - A bit different error messages.
 - ClientError (with an appropriate code) is used to raise an error instead of
   internal errors: IllegalParams and OutOfMemory.
-- `<key_def>` instance serializetion: `<is_nullable>` and `<collation>` are not
+- `<keydef>` instance serialization: `<is_nullable>` and `<collation>` are not
   shown when its value is default one (it is so only for `<path>` in the
   built-in module).
 
