@@ -1,6 +1,9 @@
 # tuple.keydef
 
-It is WIP. Beware, I'll force-push.
+## Overview
+
+The module provides ability to use Tarantool's tuple comparators and key
+extraction functions.
 
 ## API
 
