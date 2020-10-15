@@ -1,19 +1,19 @@
 local ffi = require('ffi')
-local key_def = require('key_def')
-local key_def_t = ffi.typeof('struct key_def_key_def')
+local tuple_keydef = require('tuple.keydef')
+local tuple_keydef_t = ffi.typeof('struct tuple_keydef')
 
 local methods = {
-    ['extract_key'] = key_def.extract_key,
-    ['compare'] = key_def.compare,
-    ['compare_with_key'] = key_def.compare_with_key,
-    ['merge'] = key_def.merge,
-    ['totable'] = key_def.totable,
-    ['__serialize'] = key_def.totable,
+    ['extract_key'] = tuple_keydef.extract_key,
+    ['compare'] = tuple_keydef.compare,
+    ['compare_with_key'] = tuple_keydef.compare_with_key,
+    ['merge'] = tuple_keydef.merge,
+    ['totable'] = tuple_keydef.totable,
+    ['__serialize'] = tuple_keydef.totable,
 }
 
-ffi.metatype(key_def_t, {
+ffi.metatype(tuple_keydef_t, {
     __index = function(self, key)
         return methods[key]
     end,
-    __tostring = function(self) return '<struct key_def_key_def *>' end,
+    __tostring = function(self) return '<struct tuple_keydef *>' end,
 })

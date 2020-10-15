@@ -49,7 +49,7 @@ static_assert(sizeof(box_key_part_def_t) == BOX_KEY_PART_DEF_T_SIZE,
 
 enum { TUPLE_INDEX_BASE = 1 };
 
-static uint32_t CTID_STRUCT_KEY_DEF_REF = 0;
+static uint32_t CTID_STRUCT_TUPLE_KEY_DEF_REF = 0;
 static bool JSON_PATH_IS_SUPPORTED = false;
 
 /*
@@ -400,7 +400,7 @@ luaT_check_key_def(struct lua_State *L, int idx)
 
 	uint32_t cdata_type;
 	box_key_def_t **key_def_ptr = luaL_checkcdata(L, idx, &cdata_type);
-	if (key_def_ptr == NULL || cdata_type != CTID_STRUCT_KEY_DEF_REF)
+	if (key_def_ptr == NULL || cdata_type != CTID_STRUCT_TUPLE_KEY_DEF_REF)
 		return NULL;
 	return *key_def_ptr;
 }
@@ -549,7 +549,7 @@ lbox_key_def_merge(struct lua_State *L)
 	if (new_key_def == NULL)
 		return luaT_error(L);
 
-	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
+	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_TUPLE_KEY_DEF_REF) =
 		new_key_def;
 	lua_pushcfunction(L, lbox_key_def_gc);
 	luaL_setcdatagc(L, -2);
@@ -583,7 +583,7 @@ static int
 lbox_key_def_new(struct lua_State *L)
 {
 	if (lua_gettop(L) != 1 || lua_istable(L, 1) != 1)
-		return luaL_error(L, "Bad params, use: key_def.new({"
+		return luaL_error(L, "Bad params, use: tuple_keydef.new({"
 				  "{fieldno = fieldno, type = type"
 				  "[, is_nullable = <boolean>]"
 				  "[, path = <string>]"
@@ -620,7 +620,7 @@ lbox_key_def_new(struct lua_State *L)
 	if (key_def == NULL)
 		return luaT_error(L);
 
-	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_KEY_DEF_REF) =
+	*(box_key_def_t **) luaL_pushcdata(L, CTID_STRUCT_TUPLE_KEY_DEF_REF) =
 		key_def;
 	lua_pushcfunction(L, lbox_key_def_gc);
 	luaL_setcdatagc(L, -2);
@@ -644,8 +644,9 @@ luaopen_keydef(struct lua_State *L)
 	 * ffi.metatype() on <struct key_def>. We should use
 	 * another name within the external module.
 	 */
-	luaL_cdef(L, "struct key_def_key_def;");
-	CTID_STRUCT_KEY_DEF_REF = luaL_ctypeid(L, "struct key_def_key_def *");
+	luaL_cdef(L, "struct tuple_keydef;");
+	CTID_STRUCT_TUPLE_KEY_DEF_REF =
+		luaL_ctypeid(L, "struct tuple_keydef *");
 
 	JSON_PATH_IS_SUPPORTED = json_path_is_supported();
 
@@ -659,7 +660,7 @@ luaopen_keydef(struct lua_State *L)
 		{"totable", lbox_key_def_to_table},
 		{NULL, NULL}
 	};
-	luaL_register(L, "key_def", meta);
+	luaL_register(L, "tuple.keydef", meta);
 
 	/* Execute Lua part of the module. */
 	execute_key_def_lua(L);

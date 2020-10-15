@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# runtest.sh key_def.test.lua [work_dir]
+# runtest.sh tuple_keydef.test.lua [work_dir]
 
 set -exu
 

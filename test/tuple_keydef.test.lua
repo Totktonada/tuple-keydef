@@ -57,9 +57,9 @@ local fun = require('fun')
 -- function GC object.
 jit.off(fun.chain({}).gen)
 
-local key_def_lib = require('keydef')
+local tuple_keydef = require('keydef')
 
-local usage_error = 'Bad params, use: key_def.new({' ..
+local usage_error = 'Bad params, use: tuple_keydef.new({' ..
                     '{fieldno = fieldno, type = type' ..
                     '[, is_nullable = <boolean>]' ..
                     '[, path = <string>]' ..
@@ -86,7 +86,7 @@ local function normalize_key_parts(parts)
     return res
 end
 
-local key_def_new_cases = {
+local tuple_keydef_new_cases = {
     -- Cases to call before box.cfg{}.
     {
         'Pass no key parts',
@@ -215,7 +215,7 @@ local key_def_new_cases = {
         require_json_path = true,
     },
     --
-    -- gh-4519: key_def should allow the same options as
+    -- gh-4519: tuple.keydef should allow the same options as
     -- <space_object>.create_index(). That is, a field number
     -- should be allowed to be specified as `field`, not only
     -- `fieldno`.
@@ -239,10 +239,10 @@ local key_def_new_cases = {
     }
 }
 
-local test = tap.test('key_def')
+local test = tap.test('tuple.keydef')
 
-test:plan(#key_def_new_cases - 1 + 8)
-for _, case in ipairs(key_def_new_cases) do
+test:plan(#tuple_keydef_new_cases - 1 + 8)
+for _, case in ipairs(tuple_keydef_new_cases) do
     if type(case) == 'function' then
         case()
     elseif case.require_json_path and not json_path_is_supported then
@@ -250,13 +250,13 @@ for _, case in ipairs(key_def_new_cases) do
     else
         local ok, res
         if case.params then
-            ok, res = pcall(key_def_lib.new, unpack(case.params))
+            ok, res = pcall(tuple_keydef.new, unpack(case.params))
         else
-            ok, res = pcall(key_def_lib.new, case.parts)
+            ok, res = pcall(tuple_keydef.new, case.parts)
         end
         if case.exp_err == nil then
             ok = ok and type(res) == 'cdata' and
-                ffi.istype('struct key_def_key_def', res)
+                ffi.istype('struct tuple_keydef', res)
             test:ok(ok, case[1])
         else
             local err = tostring(res) -- cdata -> string
@@ -271,31 +271,31 @@ end
 test:test('extract_key()', function(test)
     test:plan(13)
 
-    local key_def_a = key_def_lib.new({
+    local keydef_a = tuple_keydef.new({
         {type = 'unsigned', fieldno = 1},
     })
-    local key_def_b = key_def_lib.new({
+    local keydef_b = tuple_keydef.new({
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     })
-    local key_def_c = key_def_lib.new({
+    local keydef_c = tuple_keydef.new({
         {type = 'scalar', fieldno = 2},
         {type = 'scalar', fieldno = 1},
         {type = 'string', fieldno = 4, is_nullable = true},
     })
     local tuple_a = box.tuple.new({1, 1, 22})
 
-    test:is_deeply(key_def_a:extract_key(tuple_a):totable(), {1}, 'case 1')
-    test:is_deeply(key_def_b:extract_key(tuple_a):totable(), {1, 22}, 'case 2')
+    test:is_deeply(keydef_a:extract_key(tuple_a):totable(), {1}, 'case 1')
+    test:is_deeply(keydef_b:extract_key(tuple_a):totable(), {1, 22}, 'case 2')
 
     -- JSON path.
     if json_path_is_supported then
-        local res = key_def_lib.new({
+        local res = tuple_keydef.new({
             {type = 'string', fieldno = 1, path = 'a.b'},
         }):extract_key(box.tuple.new({{a = {b = 'foo'}}})):totable()
         test:is_deeply(res, {'foo'}, 'JSON path (tuple argument)')
 
-        local res = key_def_lib.new({
+        local res = tuple_keydef.new({
             {type = 'string', fieldno = 1, path = 'a.b'},
         }):extract_key({{a = {b = 'foo'}}}):totable()
         test:is_deeply(res, {'foo'}, 'JSON path (table argument)')
@@ -311,7 +311,7 @@ test:test('extract_key()', function(test)
     --
     -- * is_nullable = true;
     -- * has_optional_parts = true.
-    test:is_deeply(key_def_c:extract_key(tuple_a):totable(), {1, 1, box.NULL},
+    test:is_deeply(keydef_c:extract_key(tuple_a):totable(), {1, 1, box.NULL},
         'short tuple with a nullable part')
 
     -- A key def has a **non-nullable** part with a field that is
@@ -327,11 +327,11 @@ test:test('extract_key()', function(test)
     else
         exp_err = 'Field 2 was not found in the tuple'
     end
-    local key_def = key_def_lib.new({
+    local keydef = tuple_keydef.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
     })
-    local ok, err = pcall(key_def.extract_key, key_def,
+    local ok, err = pcall(keydef.extract_key, keydef,
         box.tuple.new({'foo'}))
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
         'short tuple with a non-nullable part (case 1)')
@@ -343,12 +343,12 @@ test:test('extract_key()', function(test)
     else
         exp_err = 'Field 2 was not found in the tuple'
     end
-    local key_def = key_def_lib.new({
+    local keydef = tuple_keydef.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
         {type = 'string', fieldno = 3},
     })
-    local ok, err = pcall(key_def.extract_key, key_def,
+    local ok, err = pcall(keydef.extract_key, keydef,
         box.tuple.new({'foo'}))
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
         'short tuple with a non-nullable part (case 2)')
@@ -363,11 +363,11 @@ test:test('extract_key()', function(test)
     else
         exp_err = 'Field 2 was not found in the tuple'
     end
-    local key_def = key_def_lib.new({
+    local keydef = tuple_keydef.new({
         {type = 'string', fieldno = 1, is_nullable = true},
         {type = 'string', fieldno = 2},
     })
-    local ok, err = pcall(key_def.extract_key, key_def,
+    local ok, err = pcall(keydef.extract_key, keydef,
         box.tuple.new({'foo'}))
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
         'short tuple with a non-nullable part (case 3)')
@@ -381,34 +381,34 @@ test:test('extract_key()', function(test)
         exp_err = 'Tuple field 2 type does not match one required by ' ..
                   'operation: expected string'
     end
-    local key_def = key_def_lib.new({
+    local keydef = tuple_keydef.new({
         {type = 'string', fieldno = 1},
         {type = 'string', fieldno = 2},
         {type = 'string', fieldno = 3},
     })
-    local ok, err = pcall(key_def.extract_key, key_def, {'one', 'two', 3})
+    local ok, err = pcall(keydef.extract_key, keydef, {'one', 'two', 3})
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
         'wrong field type')
 
     if json_path_is_supported then
-        local key_def = key_def_lib.new({
+        local keydef = tuple_keydef.new({
             {type = 'number', fieldno = 1, path='a'},
             {type = 'number', fieldno = 1, path='b'},
             {type = 'number', fieldno = 1, path='c', is_nullable=true},
             {type = 'number', fieldno = 3, is_nullable=true},
         })
-        local ok, err = pcall(key_def.extract_key, key_def,
+        local ok, err = pcall(keydef.extract_key, keydef,
                               box.tuple.new({1, 1, 22}))
         local exp_err = 'Tuple field [1]a required by space format is missing'
         test:is_deeply({ok, tostring(err)}, {false, exp_err},
                        'invalid JSON structure')
-        test:is_deeply(key_def:extract_key({{a=1, b=2}, 1}):totable(),
+        test:is_deeply(keydef:extract_key({{a=1, b=2}, 1}):totable(),
                        {1, 2, box.NULL, box.NULL},
                        'tuple with optional parts - case 1')
-        test:is_deeply(key_def:extract_key({{a=1, b=2, c=3}, 1}):totable(),
+        test:is_deeply(keydef:extract_key({{a=1, b=2, c=3}, 1}):totable(),
                        {1, 2, 3, box.NULL},
                        'tuple with optional parts - case 2')
-        test:is_deeply(key_def:extract_key({{a=1, b=2}, 1, 3}):totable(),
+        test:is_deeply(keydef:extract_key({{a=1, b=2}, 1, 3}):totable(),
                        {1, 2, box.NULL, 3},
                        'tuple with optional parts - case 3')
     else
@@ -423,10 +423,10 @@ end)
 test:test('compare()', function(test)
     test:plan(8)
 
-    local key_def_a = key_def_lib.new({
+    local keydef_a = tuple_keydef.new({
         {type = 'unsigned', fieldno = 1},
     })
-    local key_def_b = key_def_lib.new({
+    local keydef_b = tuple_keydef.new({
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     })
@@ -434,22 +434,22 @@ test:test('compare()', function(test)
     local tuple_b = box.tuple.new({2, 1, 11})
     local tuple_c = box.tuple.new({3, 1, 22})
 
-    test:is(key_def_a:compare(tuple_b, tuple_a), 1,
+    test:is(keydef_a:compare(tuple_b, tuple_a), 1,
             'case 1: great (tuple argument)')
-    test:is(key_def_a:compare(tuple_b, tuple_c), -1,
+    test:is(keydef_a:compare(tuple_b, tuple_c), -1,
             'case 2: less (tuple argument)')
-    test:is(key_def_b:compare(tuple_b, tuple_a), -1,
+    test:is(keydef_b:compare(tuple_b, tuple_a), -1,
             'case 3: less (tuple argument)')
-    test:is(key_def_b:compare(tuple_a, tuple_c), 0,
+    test:is(keydef_b:compare(tuple_a, tuple_c), 0,
             'case 4: equal (tuple argument)')
 
-    test:is(key_def_a:compare(tuple_b:totable(), tuple_a:totable()), 1,
+    test:is(keydef_a:compare(tuple_b:totable(), tuple_a:totable()), 1,
             'case 1: great (table argument)')
-    test:is(key_def_a:compare(tuple_b:totable(), tuple_c:totable()), -1,
+    test:is(keydef_a:compare(tuple_b:totable(), tuple_c:totable()), -1,
             'case 2: less (table argument)')
-    test:is(key_def_b:compare(tuple_b:totable(), tuple_a:totable()), -1,
+    test:is(keydef_b:compare(tuple_b:totable(), tuple_a:totable()), -1,
             'case 3: less (table argument)')
-    test:is(key_def_b:compare(tuple_a:totable(), tuple_c:totable()), 0,
+    test:is(keydef_b:compare(tuple_a:totable(), tuple_c:totable()), 0,
             'case 4: equal (table argument)')
 end)
 
@@ -457,22 +457,22 @@ end)
 test:test('compare_with_key()', function(test)
     test:plan(3)
 
-    local key_def_b = key_def_lib.new({
+    local keydef_b = tuple_keydef.new({
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     })
     local tuple_a = box.tuple.new({1, 1, 22})
 
     local key = {1, 22}
-    test:is(key_def_b:compare_with_key(tuple_a:totable(), key), 0, 'table')
+    test:is(keydef_b:compare_with_key(tuple_a:totable(), key), 0, 'table')
 
     local key = box.tuple.new({1, 22})
-    test:is(key_def_b:compare_with_key(tuple_a, key), 0, 'tuple')
+    test:is(keydef_b:compare_with_key(tuple_a, key), 0, 'tuple')
 
     -- Unserializable key.
     local exp_err = "unsupported Lua type 'function'"
     local key = {function() end}
-    local ok, err = pcall(key_def_b.compare_with_key, key_def_b, tuple_a, key)
+    local ok, err = pcall(keydef_b.compare_with_key, keydef_b, tuple_a, key)
     test:is_deeply({ok, tostring(err)}, {false, exp_err}, 'unserializable key')
 end)
 
@@ -487,14 +487,14 @@ test:test('totable()', function(test)
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     }
-    local key_def_a = key_def_lib.new(parts_a)
-    local key_def_b = key_def_lib.new(parts_b)
+    local keydef_a = tuple_keydef.new(parts_a)
+    local keydef_b = tuple_keydef.new(parts_b)
 
     local exp = normalize_key_parts(parts_a)
-    test:is_deeply(key_def_a:totable(), exp, 'case 1')
+    test:is_deeply(keydef_a:totable(), exp, 'case 1')
 
     local exp = normalize_key_parts(parts_b)
-    test:is_deeply(key_def_b:totable(), exp, 'case 2')
+    test:is_deeply(keydef_b:totable(), exp, 'case 2')
 end)
 
 -- Case: __serialize().
@@ -508,15 +508,15 @@ test:test('__serialize()', function(test)
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     }
-    local key_def_a = key_def_lib.new(parts_a)
-    local key_def_b = key_def_lib.new(parts_b)
+    local keydef_a = tuple_keydef.new(parts_a)
+    local keydef_b = tuple_keydef.new(parts_b)
 
     local exp = normalize_key_parts(parts_a)
-    local got = json.decode(json.encode(key_def_a))
+    local got = json.decode(json.encode(keydef_a))
     test:is_deeply(got, exp, 'case 1')
 
     local exp = normalize_key_parts(parts_b)
-    local got = json.decode(json.encode(key_def_b))
+    local got = json.decode(json.encode(keydef_b))
     test:is_deeply(got, exp, 'case 2')
 end)
 
@@ -531,55 +531,55 @@ test:test('tostring()', function(test)
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     }
-    local key_def_a = key_def_lib.new(parts_a)
-    local key_def_b = key_def_lib.new(parts_b)
+    local keydef_a = tuple_keydef.new(parts_a)
+    local keydef_b = tuple_keydef.new(parts_b)
 
-    local exp = '<struct key_def_key_def *>'
-    test:is(tostring(key_def_a), exp, 'case 1')
-    test:is(tostring(key_def_b), exp, 'case 2')
+    local exp = '<struct tuple_keydef *>'
+    test:is(tostring(keydef_a), exp, 'case 1')
+    test:is(tostring(keydef_b), exp, 'case 2')
 end)
 
 -- Case: merge().
 test:test('merge()', function(test)
     test:plan(6)
 
-    local key_def_a = key_def_lib.new({
+    local keydef_a = tuple_keydef.new({
         {type = 'unsigned', fieldno = 1},
     })
-    local key_def_b = key_def_lib.new({
+    local keydef_b = tuple_keydef.new({
         {type = 'number', fieldno = 2},
         {type = 'number', fieldno = 3},
     })
-    local key_def_c = key_def_lib.new({
+    local keydef_c = tuple_keydef.new({
         {type = 'scalar', fieldno = 2},
         {type = 'scalar', fieldno = 1},
         {type = 'string', fieldno = 4, is_nullable = true},
     })
     local tuple_a = box.tuple.new({1, 1, 22})
 
-    local key_def_ab = key_def_a:merge(key_def_b)
-    local exp_parts = fun.iter(key_def_a:totable())
-        :chain(fun.iter(key_def_b:totable())):totable()
-    test:is_deeply(key_def_ab:totable(), exp_parts,
+    local keydef_ab = keydef_a:merge(keydef_b)
+    local exp_parts = fun.iter(keydef_a:totable())
+        :chain(fun.iter(keydef_b:totable())):totable()
+    test:is_deeply(keydef_ab:totable(), exp_parts,
         'case 1: verify with :totable()')
-    test:is_deeply(key_def_ab:extract_key(tuple_a):totable(), {1, 1, 22},
+    test:is_deeply(keydef_ab:extract_key(tuple_a):totable(), {1, 1, 22},
         'case 1: verify with :extract_key()')
 
-    local key_def_ba = key_def_b:merge(key_def_a)
-    local exp_parts = fun.iter(key_def_b:totable())
-        :chain(fun.iter(key_def_a:totable())):totable()
-    test:is_deeply(key_def_ba:totable(), exp_parts,
+    local keydef_ba = keydef_b:merge(keydef_a)
+    local exp_parts = fun.iter(keydef_b:totable())
+        :chain(fun.iter(keydef_a:totable())):totable()
+    test:is_deeply(keydef_ba:totable(), exp_parts,
         'case 2: verify with :totable()')
-    test:is_deeply(key_def_ba:extract_key(tuple_a):totable(), {1, 22, 1},
+    test:is_deeply(keydef_ba:extract_key(tuple_a):totable(), {1, 22, 1},
         'case 2: verify with :extract_key()')
 
     -- Intersecting parts + NULL parts.
-    local key_def_cb = key_def_c:merge(key_def_b)
-    local exp_parts = key_def_c:totable()
+    local keydef_cb = keydef_c:merge(keydef_b)
+    local exp_parts = keydef_c:totable()
     exp_parts[#exp_parts + 1] = {type = 'number', fieldno = 3}
-    test:is_deeply(key_def_cb:totable(), exp_parts,
+    test:is_deeply(keydef_cb:totable(), exp_parts,
         'case 3: verify with :totable()')
-    test:is_deeply(key_def_cb:extract_key(tuple_a):totable(),
+    test:is_deeply(keydef_cb:extract_key(tuple_a):totable(),
         {1, 1, box.NULL, 22}, 'case 3: verify with :extract_key()')
 end)
 
@@ -599,7 +599,7 @@ test:test('JSON path is not supported error', function(test)
         },
     }
     local exp_err = 'JSON path is not supported on given tarantool version'
-    local ok, err = pcall(key_def_lib.new, parts)
+    local ok, err = pcall(tuple_keydef.new, parts)
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
                    'verify error message')
 end)

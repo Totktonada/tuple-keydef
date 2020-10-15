@@ -1,2 +1,2 @@
-add_test(NAME key_def.test.lua
-         COMMAND runtest.sh key_def.test.lua)
+add_test(NAME tuple_keydef.test.lua
+         COMMAND runtest.sh tuple_keydef.test.lua)
