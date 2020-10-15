@@ -18,7 +18,7 @@ find_package(Tarantool)
 include_directories(${TARANTOOL_INCLUDE_DIRS})
 
 add_subdirectory(extra)
-add_subdirectory(keydef)
+add_subdirectory(tuple)
 
 enable_testing()
 add_subdirectory(test)

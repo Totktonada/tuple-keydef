@@ -4,7 +4,7 @@
 local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
     :gsub('/%./', '/'):gsub('/+$', ''))
 local soext = jit.os == 'OSX' and 'dylib' or 'so'
-package.cpath = ('%s/../keydef/?.%s;%s'):format(cur_dir, soext, package.cpath)
+package.cpath = ('%s/../?.%s;%s'):format(cur_dir, soext, package.cpath)
 
 -- {{{ Compatibility layer between different tarantool versions
 
@@ -57,7 +57,7 @@ local fun = require('fun')
 -- function GC object.
 jit.off(fun.chain({}).gen)
 
-local tuple_keydef = require('keydef')
+local tuple_keydef = require('tuple.keydef')
 
 local usage_error = 'Bad params, use: tuple_keydef.new({' ..
                     '{fieldno = fieldno, type = type' ..

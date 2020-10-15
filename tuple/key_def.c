@@ -634,7 +634,7 @@ lbox_key_def_new(struct lua_State *L)
  * Register the module.
  */
 LUA_API int
-luaopen_keydef(struct lua_State *L)
+luaopen_tuple_keydef(struct lua_State *L)
 {
 	/*
 	 * ffi.metatype() cannot be called twice on the same type.
