@@ -514,7 +514,7 @@ lbox_key_def_compare_with_key(struct lua_State *L)
 		return luaT_error(L);
 	}
 
-	if (box_key_def_validate_key(key_def, key) != 0) {
+	if (box_key_def_validate_key(key_def, key, NULL) != 0) {
 		box_region_truncate(region_svp);
 		box_tuple_unref(tuple);
 		return luaT_error(L);
