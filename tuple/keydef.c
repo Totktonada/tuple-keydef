@@ -58,21 +58,21 @@ static bool JSON_PATH_IS_SUPPORTED = false;
  * Note: It is prefixed with the project name to don't clash with
  * tarantool symbol.
  */
-extern char tuple_keydef_keydef_lua[];
+extern char tuple_keydef_postload_lua[];
 
 /* {{{ Helpers */
 
 void
-execute_key_def_lua(struct lua_State *L)
+execute_postload_lua(struct lua_State *L)
 {
 	int top = lua_gettop(L);
 
-	const char *modname = "key_def";
-	const char *modsrc = tuple_keydef_keydef_lua;
-	const char *modfile = "@key_def/key_def.lua";
+	const char *modname = "postload";
+	const char *modsrc = tuple_keydef_postload_lua;
+	const char *modfile = "@tuple.keydef/postload.lua";
 
 	if (luaL_loadbuffer(L, modsrc, strlen(modsrc), modfile) != 0)
-		luaL_error(L, "Unable to load @key_def/key_def.lua");
+		luaL_error(L, "Unable to load %s", modfile);
 	lua_pushstring(L, modname);
 	lua_call(L, 1, 1);
 
@@ -663,7 +663,7 @@ luaopen_tuple_keydef(struct lua_State *L)
 	luaL_register(L, "tuple.keydef", meta);
 
 	/* Execute Lua part of the module. */
-	execute_key_def_lua(L);
+	execute_postload_lua(L);
 
 	return 1;
 }

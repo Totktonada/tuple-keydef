@@ -1,6 +1,6 @@
 # Compile *.lua files into *.lua.c sources
 set(lua_sources)
-lua_source(lua_sources keydef.lua)
+lua_source(lua_sources postload.lua)
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${lua_sources})
 
