@@ -14,12 +14,6 @@ set(LIBSUBDIR tuple)
 set(LIBNAME keydef)
 add_library(${LIBNAME} SHARED ${module_sources})
 
-# Without this magic .so is not rebuilt on .lua changes.
-#
-# XXX: Verify it again.
-add_custom_target(build_lua_sources DEPENDS ${lua_sources})
-add_dependencies(${LIBNAME} build_lua_sources)
-
 # Drop 'lib' prefix from the filename: libfoo.so -> foo.so.
 set_target_properties(${LIBNAME} PROPERTIES PREFIX "")
 
