@@ -1,5 +1,5 @@
-#ifndef KEY_DEF_UTIL_H_INCLUDED
-#define KEY_DEF_UTIL_H_INCLUDED
+#ifndef TUPLE_KEYDEF_UTIL_H_INCLUDED
+#define TUPLE_KEYDEF_UTIL_H_INCLUDED
 /*
  * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
  *
@@ -53,4 +53,4 @@ strnindex(const char **haystack, const char *needle, uint32_t len,
 } /* extern "C" */
 #endif /* defined(__cplusplus) */
 
-#endif /* KEY_DEF_UTIL_H_INCLUDED */
+#endif /* TUPLE_KEYDEF_UTIL_H_INCLUDED */
