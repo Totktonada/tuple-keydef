@@ -1,12 +1,12 @@
 # Compile *.lua files into *.lua.c sources
 set(lua_sources)
-lua_source(lua_sources key_def.lua)
+lua_source(lua_sources keydef.lua)
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${lua_sources})
 
 set(module_sources
     util.c
-    key_def.c
+    keydef.c
     ${lua_sources}
 )
 
