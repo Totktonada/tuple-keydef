@@ -10,6 +10,22 @@ extraction functions.
 It is the same as the [built-in][website_doc] `key_def` module, but should be
 required as `tuple.keydef`.
 
+## Compatibility
+
+Supported tarantool versions:
+
+- 1.10 since 1.10.7-85-g840c13293.
+- 2.4 since 2.4.2-126-g883eac6a7.
+- 2.5 since 2.5.1-145-geea90d7ce.
+- 2.6 since 2.6.0-188-g4a12985f1.
+- All 2.7+.
+
+The older tarantool versions are not supported, because they lack of necessary
+C APIs.
+
+The module built against one tarantool version works fine on another: it
+performs runtime checks of supported features (like JSON paths).
+
 ## Differences from the built-in module
 
 ### Key differences
