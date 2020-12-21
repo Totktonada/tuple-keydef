@@ -241,7 +241,7 @@ local tuple_keydef_new_cases = {
 
 local test = tap.test('tuple.keydef')
 
-test:plan(#tuple_keydef_new_cases - 1 + 8)
+test:plan(#tuple_keydef_new_cases - 1 + 9)
 for _, case in ipairs(tuple_keydef_new_cases) do
     if type(case) == 'function' then
         case()
@@ -602,6 +602,30 @@ test:test('JSON path is not supported error', function(test)
     local ok, err = pcall(tuple_keydef.new, parts)
     test:is_deeply({ok, tostring(err)}, {false, exp_err},
                    'verify error message')
+end)
+
+-- gh-7: incorrect keys for :compare_with_key().
+--
+-- See also https://github.com/tarantool/tarantool/issues/5307
+test:test('no segfault at incorrect key in :compare_with_key()', function(test)
+	test:plan(3)
+
+    local keydef = tuple_keydef.new({{fieldno = 1, type = 'unsigned'}})
+
+    -- Should succeed.
+    local ok, res = pcall(keydef.compare_with_key, keydef, {1}, {1})
+    test:ok(ok and res == 0, 'Simple equality')
+
+    -- Should succeed.
+    local ok, res = pcall(keydef.compare_with_key, keydef, {1}, {2})
+    test:ok(ok and res < 0, 'Simple inequality')
+
+    -- Should fail.
+    local exp_err = 'Invalid key part count (expected [0..1], got 9)'
+    local ok, res = pcall(keydef.compare_with_key, keydef, {1},
+                          {1, 2, 3, 4, 5, 6, 7, 8, 9})
+    test:is_deeply({ok, tostring(res)}, {false, exp_err},
+                   'Invalid key part count')
 end)
 
 os.exit(test:check() and 0 or 1)
