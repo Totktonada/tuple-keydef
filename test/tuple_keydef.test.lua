@@ -241,7 +241,7 @@ local tuple_keydef_new_cases = {
 
 local test = tap.test('tuple.keydef')
 
-test:plan(#tuple_keydef_new_cases - 1 + 9)
+test:plan(#tuple_keydef_new_cases - 1 + 10)
 for _, case in ipairs(tuple_keydef_new_cases) do
     if type(case) == 'function' then
         case()
@@ -626,6 +626,23 @@ test:test('no segfault at incorrect key in :compare_with_key()', function(test)
                           {1, 2, 3, 4, 5, 6, 7, 8, 9})
     test:is_deeply({ok, tostring(res)}, {false, exp_err},
                    'Invalid key part count')
+end)
+
+-- gh-9: test hotreloadability
+-- https://github.com/tarantool/tuple-keydef/issues/9
+test:test('hotreload', function(test)
+    test:plan(2)
+
+    _G.tuple = nil
+    tuple_keydef = nil
+    package.loaded['tuple.keydef'] = nil
+    collectgarbage()
+    collectgarbage()
+
+    tuple_keydef = require('tuple.keydef')
+
+    test:istable(tuple_keydef, 'tuple.keydef hotreload')
+    test:istable(_G.tuple, 'tuple hotreload')
 end)
 
 os.exit(test:check() and 0 or 1)

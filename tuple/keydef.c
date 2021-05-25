@@ -636,18 +636,6 @@ lbox_key_def_new(struct lua_State *L)
 LUA_API int
 luaopen_tuple_keydef(struct lua_State *L)
 {
-	/*
-	 * ffi.metatype() cannot be called twice on the same type.
-	 *
-	 * Tarantool has built-in key_def Lua module since
-	 * 2.2.0-255-g22db9c264, which already calls
-	 * ffi.metatype() on <struct key_def>. We should use
-	 * another name within the external module.
-	 */
-	luaL_cdef(L, "struct tuple_keydef;");
-	CTID_STRUCT_TUPLE_KEY_DEF_REF =
-		luaL_ctypeid(L, "struct tuple_keydef *");
-
 	JSON_PATH_IS_SUPPORTED = json_path_is_supported();
 
 	/* Export C functions to Lua. */
@@ -664,6 +652,8 @@ luaopen_tuple_keydef(struct lua_State *L)
 
 	/* Execute Lua part of the module. */
 	execute_postload_lua(L);
+	CTID_STRUCT_TUPLE_KEY_DEF_REF =
+		luaL_ctypeid(L, "struct tuple_keydef *");
 
 	return 1;
 }

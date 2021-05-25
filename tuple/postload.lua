@@ -1,4 +1,19 @@
 local ffi = require('ffi')
+
+-- Gracefully handle hotreload. If the `tuple_keydef` is already
+-- declared in FFI, then it's the hotreload case.
+-- ffi.metatype() cannot be called twice on the same type.
+if pcall(ffi.typeof, 'struct tuple_keydef') then
+    return
+end
+
+--
+-- Tarantool has built-in key_def Lua module since
+-- 2.2.0-255-g22db9c264, which already calls
+-- ffi.metatype() on <struct key_def>. We should use
+-- another name within the external module.
+ffi.cdef('struct tuple_keydef;')
+
 local tuple_keydef = require('tuple.keydef')
 local tuple_keydef_t = ffi.typeof('struct tuple_keydef')
 
