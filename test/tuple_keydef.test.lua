@@ -1,6 +1,15 @@
 #!/usr/bin/env tarantool
 
 -- Prefer the module from the repository.
+--
+-- It correctly finds the module, when in-source build is used
+-- (`cmake .` as opposed to `cmake /path/to/source`). Otherwise
+-- the module should be installed into one of default locations
+-- (rare case for testing) or LUA_CPATH should point to its
+-- location.
+--
+-- You don't need to bother about LUA_CPATH if you're use
+-- `make test` or run the test manually with in-source build.
 local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
     :gsub('/%./', '/'):gsub('/+$', ''))
 local soext = jit.os == 'OSX' and 'dylib' or 'so'
