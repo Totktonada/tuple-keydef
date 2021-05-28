@@ -18,7 +18,17 @@ package.cpath = ('%s/../?.%s;%s'):format(cur_dir, soext, package.cpath)
 -- {{{ Compatibility layer between different tarantool versions
 
 local function parse_tarantool_version(component)
-    local pattern = '^(%d+).(%d+).(%d+)-(%d+)-g[0-9a-f]+$'
+    -- _TARANTOOL gives a string of the following kind:
+    --
+    -- * '2.8.1-0-ge2a1ec0c2' for opensource tarantool;
+    -- * '2.8.1-0-ge2a1ec0c2-r405' for tarantool enterprise.
+    --
+    -- Nicely, tarantool enterprise reports the opensource
+    -- version, on which it is based, in the first four components
+    -- (as well as in the commit hash).
+    --
+    -- So we ignore everything after 4th component.
+    local pattern = '^(%d+).(%d+).(%d+)-(%d+)-g[0-9a-f]+'
     return tonumber((select(component, _TARANTOOL:match(pattern))))
 end
 
