@@ -7,6 +7,10 @@ install_manifest.txt
 CTestTestfile.cmake
 Testing/
 
+# 'tarantoolctl rocks make' artifacts
+.rocks/
+build.luarocks/
+
 # Generated files
 extra/txt2c
 *.lua.c
