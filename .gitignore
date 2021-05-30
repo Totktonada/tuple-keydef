@@ -18,6 +18,3 @@ extra/txt2c
 
 # Vim Swap files
 .*.sw[a-z]
-
-# Default test working directory
-test/var/
