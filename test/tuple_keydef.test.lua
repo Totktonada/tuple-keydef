@@ -1,20 +1,5 @@
 #!/usr/bin/env tarantool
 
--- Prefer the module from the repository.
---
--- It correctly finds the module, when in-source build is used
--- (`cmake .` as opposed to `cmake /path/to/source`). Otherwise
--- the module should be installed into one of default locations
--- (rare case for testing) or LUA_CPATH should point to its
--- location.
---
--- You don't need to bother about LUA_CPATH if you're use
--- `make test` or run the test manually with in-source build.
-local cur_dir = require('fio').abspath(debug.getinfo(1).source:match("@?(.*/)")
-    :gsub('/%./', '/'):gsub('/+$', ''))
-local soext = jit.os == 'OSX' and 'dylib' or 'so'
-package.cpath = ('%s/../?.%s;%s'):format(cur_dir, soext, package.cpath)
-
 -- {{{ Compatibility layer between different tarantool versions
 
 local function parse_tarantool_version(component)
@@ -145,9 +130,34 @@ local tuple_keydef_new_cases = {
         }},
         exp_err = coll_not_found(1, 'unicode_ci'),
     },
+    -- Call box.cfg() to load collations, which are used in the
+    -- following test cases.
     function()
-        -- For collations.
-        box.cfg{}
+        -- Trick to don't leave *.snap, *.xlog files after
+        -- testing.
+        --
+        -- 1. Write the initial snapshot to a temporary directory
+        --    and remove it right after dumping the snapshot.
+        -- 2. Disable *.xlog writting at all.
+        --
+        -- We lean on the following assumptions here:
+        --
+        -- a) The test does not call box.snapshot() and its
+        --    duration is less than the default checkpoint
+        --    interval (1 hour).
+        -- b) The test is irrelevant to tarantool functionality
+        --    that is available only with enabled WAL (say,
+        --    replication).
+        -- c) The test does not write any logs or temporary files
+        --    into the working directory (otherwise we should
+        --    clean up them too somehow).
+        local fio = require('fio')
+        local tempdir = fio.tempdir()
+        box.cfg{
+            memtx_dir = tempdir,
+            wal_mode = 'none',
+        }
+        fio.rmtree(tempdir)
     end,
     -- Cases to call after box.cfg{}.
     --[[ FIXME: Bring collation_id support back.
