@@ -636,6 +636,8 @@ lbox_key_def_new(struct lua_State *L)
 LUA_API int
 luaopen_tuple_keydef(struct lua_State *L)
 {
+	static bool first_load = true;
+
 	/*
 	 * ffi.metatype() cannot be called twice on the same type.
 	 *
@@ -663,7 +665,10 @@ luaopen_tuple_keydef(struct lua_State *L)
 	luaL_register(L, "tuple.keydef", meta);
 
 	/* Execute Lua part of the module. */
-	execute_postload_lua(L);
+	if (first_load) {
+		execute_postload_lua(L);
+		first_load = false;
+	}
 
 	return 1;
 }

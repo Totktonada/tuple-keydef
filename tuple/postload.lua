@@ -1,3 +1,8 @@
+-- This script is executed only on the first load of the module.
+--
+-- It is NOT executed after hot reload (when the package.loaded
+-- entry is removed and require is called once again).
+
 local ffi = require('ffi')
 local tuple_keydef = require('tuple.keydef')
 local tuple_keydef_t = ffi.typeof('struct tuple_keydef')
@@ -11,6 +16,9 @@ local methods = {
     ['__serialize'] = tuple_keydef.totable,
 }
 
+-- ffi.metatype() succeeds only when called the first time.
+-- Next calls on the same type will raise 'cannot change a
+-- protected metatable' error.
 ffi.metatype(tuple_keydef_t, {
     __index = function(self, key)
         return methods[key]
