@@ -86,16 +86,11 @@ end)
 
 -- Collect the old module table before load the module again.
 test:test('hot_reload_after_gc', function(test)
-    test:plan(4)
+    test:plan(2)
 
     require('tuple.keydef')
 
     -- Forget all links to the module table.
-    --
-    -- rawset() is to don't be hit by the 'strict mode'. When
-    -- tarantool is built as Debug, it behaves like after
-    -- `require('strict').on()` by default.
-    rawset(_G, 'tuple', nil)
     package.loaded['tuple.keydef'] = nil
 
     -- Ensure the module table is garbage collected.
@@ -110,8 +105,6 @@ test:test('hot_reload_after_gc', function(test)
     local ok, tuple_keydef = pcall(require, 'tuple.keydef')
     test:ok(ok, 'reload succeeds')
     test:istable(tuple_keydef, 'the module is a table (just in case)')
-    test:istable(_G.tuple, '_G.tuple is present')
-    test:istable(_G.tuple.keydef, '_G.tuple.keydef is present')
 end)
 
 os.exit(test:check() and 0 or 1)

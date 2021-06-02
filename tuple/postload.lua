@@ -1,10 +1,16 @@
--- This script is executed only on the first load of the module.
+-- This script is NOT a regular module file.
+--
+-- It is bundled into the .so / .dylib file.
+--
+-- It is executed only on the first load of the module.
 --
 -- It is NOT executed after hot reload (when the package.loaded
 -- entry is removed and require is called once again).
+--
+-- The tuple.keydef module table is accessible as `...`.
 
 local ffi = require('ffi')
-local tuple_keydef = require('tuple.keydef')
+local tuple_keydef = ...
 local tuple_keydef_t = ffi.typeof('struct tuple_keydef')
 
 local methods = {

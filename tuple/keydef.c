@@ -62,18 +62,27 @@ extern char tuple_keydef_postload_lua[];
 
 /* {{{ Helpers */
 
+/**
+ * Execute the postload code written on Lua.
+ *
+ * Expects the module table on top of the Lua stack.
+ */
 void
 execute_postload_lua(struct lua_State *L)
 {
 	int top = lua_gettop(L);
 
-	const char *modname = "postload";
 	const char *modsrc = tuple_keydef_postload_lua;
 	const char *modfile = "@tuple.keydef/postload.lua";
 
 	if (luaL_loadbuffer(L, modsrc, strlen(modsrc), modfile) != 0)
 		luaL_error(L, "Unable to load %s", modfile);
-	lua_pushstring(L, modname);
+	/*
+	 * Copy the module table to top of the Lua stack: it will
+	 * be passed to the script and will be accessible as
+	 * `...`.
+	 */
+	lua_pushvalue(L, -2);
 	lua_call(L, 1, 1);
 
 	/* Ignore Lua return value. */
@@ -652,7 +661,7 @@ luaopen_tuple_keydef(struct lua_State *L)
 
 	JSON_PATH_IS_SUPPORTED = json_path_is_supported();
 
-	/* Export C functions to Lua. */
+	/* Create the module table. */
 	static const struct luaL_Reg meta[] = {
 		{"new", lbox_key_def_new},
 		{"extract_key", lbox_key_def_extract_key},
@@ -662,7 +671,8 @@ luaopen_tuple_keydef(struct lua_State *L)
 		{"totable", lbox_key_def_to_table},
 		{NULL, NULL}
 	};
-	luaL_register(L, "tuple.keydef", meta);
+	lua_createtable(L, 0, lengthof(meta) - 1);
+	luaL_register(L, NULL, meta);
 
 	/* Execute Lua part of the module. */
 	if (first_load) {

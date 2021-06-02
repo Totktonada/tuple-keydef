@@ -270,7 +270,7 @@ local tuple_keydef_new_cases = {
 
 local test = tap.test('tuple.keydef')
 
-test:plan(#tuple_keydef_new_cases - 1 + 9)
+test:plan(#tuple_keydef_new_cases - 1 + 10)
 for _, case in ipairs(tuple_keydef_new_cases) do
     if type(case) == 'function' then
         case()
@@ -655,6 +655,18 @@ test:test('no segfault at incorrect key in :compare_with_key()', function(test)
                           {1, 2, 3, 4, 5, 6, 7, 8, 9})
     test:is_deeply({ok, tostring(res)}, {false, exp_err},
                    'Invalid key part count')
+end)
+
+-- The module must not assign the 'tuple' global.
+--
+-- IOW, luaL_register() must have NULL as the second parameter.
+test:test('no _G.tuple', function(test)
+    test:plan(1)
+
+    -- rawget() is to don't be hit by the 'strict mode'. When
+    -- tarantool is built as Debug, it behaves like after
+    -- `require('strict').on()` by default.
+    test:ok(rawget(_G, 'tuple') == nil, '_G.tuple is nil')
 end)
 
 os.exit(test:check() and 0 or 1)
