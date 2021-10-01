@@ -12,7 +12,7 @@ include(cmake/compiler.cmake)
 include(cmake/utils.cmake)
 
 # Find Tarantool.
-set(TARANTOOL_FIND_REQUIRED ON)
+set(Tarantool_FIND_REQUIRED ON)
 find_package(Tarantool)
 include_directories(${TARANTOOL_INCLUDE_DIRS})
 
