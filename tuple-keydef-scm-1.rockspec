@@ -1,7 +1,7 @@
 package = 'tuple-keydef'
 version = 'scm-1'
 source  = {
-    url    = 'git://github.com/tarantool/tuple-keydef.git',
+    url    = 'git+https://github.com/tarantool/tuple-keydef.git',
     branch = 'master',
 }
 description = {
