@@ -12,21 +12,21 @@ local function parse_tarantool_version(component)
     -- version, on which it is based, in the first four components
     -- (as well as in the commit hash).
     --
-    -- So we ignore everything after 4th component.
-    local pattern = '^(%d+).(%d+).(%d+)-(%d+)-g[0-9a-f]+'
+    -- We don't use version components behind the first three
+    -- ones in the testing code for simplicity. We also ignore
+    -- alpha/beta/rc suffixes for the same reason.
+    local pattern = '^(%d+)%.(%d+)%.(%d+)'
     return tonumber((select(component, _TARANTOOL:match(pattern))))
 end
 
 local _TARANTOOL_MAJOR = parse_tarantool_version(1)
 local _TARANTOOL_MINOR = parse_tarantool_version(2)
 local _TARANTOOL_PATCH = parse_tarantool_version(3)
-local _TARANTOOL_REV = parse_tarantool_version(4)
 
-local function tarantool_version_at_least(major, minor, patch, rev)
+local function tarantool_version_at_least(major, minor, patch)
     local major = major or 0
     local minor = minor or 0
     local patch = patch or 0
-    local rev = rev or 0
 
     if _TARANTOOL_MAJOR < major then return false end
     if _TARANTOOL_MAJOR > major then return true end
@@ -36,9 +36,6 @@ local function tarantool_version_at_least(major, minor, patch, rev)
 
     if _TARANTOOL_PATCH < patch then return false end
     if _TARANTOOL_PATCH > patch then return true end
-
-    if _TARANTOOL_REV < rev then return false end
-    if _TARANTOOL_REV > rev then return true end
 
     return true
 end
