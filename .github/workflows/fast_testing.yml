@@ -25,6 +25,9 @@ jobs:
           - '2.7'
           - '2.8'
           - '2.10'
+        build_flow:
+          - 'cmake_and_make'
+          - 'luarocks'
 
     runs-on: ubuntu-latest
     steps:
@@ -36,5 +39,29 @@ jobs:
       - name: Clone the module
         uses: actions/checkout@v2
 
-      - run: tarantoolctl rocks make
-      - run: make -C build.luarocks/ ARGS=-VV test
+      # A developer of the module usually calls `cmake . && make`
+      # or something similar. Here we ensure that this build flow
+      # is fine.
+      #
+      # Debug is a default build type, so compiler warnings are
+      # interpreted as errors here.
+      - name: Build using cmake and run testing
+        run: |
+          cmake .
+          make
+          make ARGS=-VV test
+        if: matrix.build_flow == 'cmake_and_make'
+
+      # A user usually calls `tarantoolctl rocks install
+      # <module_name> [<version>]`. Here we imitate this build
+      # flow using `tarantoolctl rocks make`, which is like the
+      # former, but uses a locally cloned repository.
+      #
+      # RelWithDebInfo build type is used under the hood, so
+      # compiler warnings are just warnings: they do not fail the
+      # build.
+      - name: Build using luarocks and run testing
+        run: |
+          tarantoolctl rocks make
+          make -C build.luarocks/ ARGS=-VV test
+        if: matrix.build_flow == 'luarocks'
