@@ -161,11 +161,14 @@ json_path_is_multikey(const char *path)
 
 /**
  * Runtime check whether JSON path is supported.
+ *
+ * Return 0 on successul check and set *res to true/false.
+ * In case of OOM, return -1.
  */
-static bool
-json_path_is_supported(void)
+static int
+json_path_is_supported(bool *res)
 {
-	bool res = false;
+	*res = false;
 
 	/* Create a key_def with JSON path. */
 	box_key_part_def_t part;
@@ -174,20 +177,25 @@ json_path_is_supported(void)
 	part.field_type = "unsigned";
 	JSON_PATH_SET(&part, "[1]");
 	box_key_def_t *key_def = box_key_def_new_v2(&part, 1);
+	if (key_def == NULL)
+		return -1;
 
 	/* Dump parts and look whether JSON path is dumped. */
 	size_t region_svp = box_region_used();
 	uint32_t part_count = 0;
 	box_key_part_def_t *parts = box_key_def_dump_parts(key_def,
 							   &part_count);
-	assert(parts != NULL);
-	res = JSON_PATH(&parts[0]) != NULL;
+	if (parts == NULL) {
+		box_region_truncate(region_svp);
+		box_key_def_delete(key_def);
+		return -1;
+	}
+	*res = JSON_PATH(&parts[0]) != NULL;
 	box_region_truncate(region_svp);
 
 	/* Delete the key_def. */
 	box_key_def_delete(key_def);
-
-	return res;
+	return 0;
 }
 
 #define DIAG_SET_ER_ILLEGAL_PARAMS(...) do {			\
@@ -660,7 +668,9 @@ luaopen_tuple_keydef(struct lua_State *L)
 	CTID_STRUCT_TUPLE_KEY_DEF_REF =
 		luaL_ctypeid(L, "struct tuple_keydef *");
 
-	JSON_PATH_IS_SUPPORTED = json_path_is_supported();
+	int rc = json_path_is_supported(&JSON_PATH_IS_SUPPORTED);
+	if (rc != 0)
+		luaT_error(L);
 
 	/* Create the module table. */
 	static const struct luaL_Reg meta[] = {
