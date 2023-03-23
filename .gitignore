@@ -15,6 +15,7 @@ build.luarocks/
 extra/txt2c
 *.lua.c
 *.so
+*.dylib
 
 # Vim Swap files
 .*.sw[a-z]

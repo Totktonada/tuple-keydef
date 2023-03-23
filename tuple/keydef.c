@@ -36,6 +36,7 @@
 #include <lauxlib.h>
 #include <tarantool/module.h>
 #include "util.h"
+#include "keydef_version.h"
 
 /*
  * Verify that <box_key_part_def_t> has the same size when
@@ -684,6 +685,9 @@ luaopen_tuple_keydef(struct lua_State *L)
 	};
 	lua_createtable(L, 0, lengthof(meta) - 1);
 	luaL_register(L, NULL, meta);
+
+	lua_pushstring(L, TUPLE_KEYDEF_VERSION);
+	lua_setfield(L, -2, "_VERSION");
 
 	/* Execute Lua part of the module. */
 	if (first_load) {
